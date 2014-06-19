@@ -84,7 +84,6 @@ class multimapped_read_sorter():
         # step through sequence
         for matched_bases, curr_err in err:
             
-            matched_bases, curr_err = err.pop(0)
             # step through the matched bases and sum log10 probabilities that the base was called correctly
             for match in range(0, int(matched_bases)):
                 total += self.log10_matched_base_prob(aligned.qual[seq_ix])
@@ -110,7 +109,7 @@ class multimapped_read_sorter():
 
     # given two aligned read objects mapping same read to different genomes,
     # return the name of the most likely genome
-    def untangle_two_mappings(self, aligned1, aligned2, genome1_prior=0.5, posterior_cutoff=0.9, verbose = False):
+    def untangle_two_mappings(self, aligned1, aligned2, genome1_prior=0.5, posterior_cutoff=0.9, verbose=False):
         
         genome2_prior = 1.0 - genome1_prior
         
