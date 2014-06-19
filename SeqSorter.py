@@ -98,8 +98,8 @@ class multimapped_read_sorter():
     # bang and quote are predefined as log10(0.25) for both based on the
     # assumption that there cannot be a probability of matching lower than 0.25
      
-    log10_matched_base_probs    = {'!':math.log10(0.25), '"':math.log10(0.25)}
-    log10_mismatched_base_probs = {'!':math.log10(0.25), '"':math.log10(0.25)}
+    log10_matched_base_probs    = {'!':math.log10(0.25), '"':math.log10(0.25), 33:math.log10(0.25), 34:math.log10(0.25)}
+    log10_mismatched_base_probs = {'!':math.log10(0.25), '"':math.log10(0.25), 33:math.log10(0.25), 34:math.log10(0.25)}
     
     # given a phred score and assuming an RNA/genome base match, compute the probability
     # that the genome generated the RNA base (probability of correctly called base)
