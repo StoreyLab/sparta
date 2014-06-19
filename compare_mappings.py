@@ -84,7 +84,7 @@ class multimapped_read_sorter():
         # step through sequence
         while err:
             
-            matched_bases, curr_err = err.pop()
+            matched_bases, curr_err = err.pop(0)
             # step through the matched bases and sum log10 probabilities that the base was called correctly
             for match in range(0, int(matched_bases)):
                 total += self.log10_matched_base_prob(aligned.qual[seq_ix])

@@ -121,6 +121,7 @@ class test_aligned_read_prob(unittest.TestCase):
         read = (read_gen('TTTTTTTTTTTTTTTTTTTTATGCAAAGGCTTTTTTTTTTATGCAAAGGCATGCAAAGGC',
                          'JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ',
                          '0AAAAAAAAAAAAAAAAAAAA10AAAAAAAAAA20'))
+
         prob = self.sorter.aligned_read_prob(read)
         # computed on wolframalpha like so:
         # (10^(((74-33)*-0.1)-log10(3)))^30 * (1-10^(((74-33)*-0.1)))^30
@@ -176,7 +177,7 @@ class test_untangle(unittest.TestCase):
         read1 = read_gen('AAGCAAAAAA','FF55FFFFFF','2AA6')
         read2 = read_gen('AAAAAACTAA','FF55FFFFFF','6AA2')
         result = self.sorter.untangle_two_mappings(read1, read2)
-        self.assertTrue(result == 'genome1')
+        self.assertTrue(result == 'genome1')  
     
     # test posterier cutoff
     # if both reads have the same number of errors and genome1's errors only have
