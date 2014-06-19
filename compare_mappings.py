@@ -22,7 +22,6 @@ import math
 import pdb
 import pysam
 import re
-import sys
 
 # parse program input.
 def parseargs():
