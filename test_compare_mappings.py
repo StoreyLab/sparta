@@ -20,6 +20,7 @@ def read_gen(seq, qual, MD):
     read.tags = [('MD',MD)]
     return read
 
+# tests for the matched base probability calculator
 class test_matched_prob(unittest.TestCase):    
     
     # values were hand-computed in wolframalpha: formula log10(1-(10^((x-33)/-10)))
@@ -44,6 +45,8 @@ class test_matched_prob(unittest.TestCase):
         prob = self.sorter.log10_matched_base_prob('~')
         self.assertAlmostEqual(prob, -2.1766285001922517006651895e-10)
         
+
+# tests for the mismatched base probability calculator
 class test_mismatched_prob(unittest.TestCase):
 
     # values were hand-computed in wolframalpha: formula log10((10^((x-33)/-10))/3)
@@ -68,6 +71,8 @@ class test_mismatched_prob(unittest.TestCase):
         prob = self.sorter.log10_mismatched_base_prob('~')
         self.assertAlmostEqual(prob, -9.7771212547196624372950279) 
 
+
+# tests for the method that acumulates probabilities for a whole aligned read
 class test_aligned_read_prob(unittest.TestCase):
     
     def setUp(self):
@@ -82,13 +87,13 @@ class test_aligned_read_prob(unittest.TestCase):
         self.assertAlmostEqual(prob, 0.98694488490516351120939182)
         
     # this read has low quality and should have a lower probability than previous
-    def test_less_likely_read(self):
+    def test_unlikely_read_bc_garbage_quality(self):
         read = read_gen('ATGCAAAGGC','!2222!!111','10')
         prob = self.sorter.aligned_read_prob(read)
         self.assertAlmostEqual(prob, 0.01335559708084671580915440)
         
     # this read is high quality but has an error; should have low probability
-    def test_unlikely_read(self):
+    def test_unlikely_read_bc_high_qual_mismatch(self):
         read = read_gen('ATGCAAAGGC','JJJJJJJJJJ','2A7')
         prob = self.sorter.aligned_read_prob(read)
         self.assertAlmostEqual(prob, 0.00002645868511694054719287)
@@ -107,6 +112,8 @@ class test_aligned_read_prob(unittest.TestCase):
         self.assertAlmostEqual(prob, 4.42270698591381293343184747e-11)
     '''
 
+# tests for the untangle_two_mappings method, which takes reads that are mapped
+# to two different genomes and tries to assign them to the correct one.
 class test_untangle(unittest.TestCase):
     
     def setUp(self):
@@ -190,8 +197,8 @@ class test_untangle(unittest.TestCase):
         
 if __name__ == '__main__':
 
-    # this is awful practice but this try/catch block allows test suite
-    # to be run in spyder IDE interpreter without hanging forever afterwards
+    # this try/catch block allows test suite to be run in spyder IDE interpreter
+    # without hanging forever afterwards
     #via: http://stackoverflow.com/questions/9202772/tests-succeed-still-get-traceback
     try:
         unittest.main()
