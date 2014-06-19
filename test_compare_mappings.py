@@ -91,27 +91,41 @@ class test_aligned_read_prob(unittest.TestCase):
         read = read_gen('ATGCAAAGGC','!2222!!111','10')
         prob = self.sorter.aligned_read_prob(read)
         self.assertAlmostEqual(prob, 0.01335559708084671580915440)
-        
+
     # this read is high quality but has an error; should have low probability
     def test_unlikely_read_bc_high_qual_mismatch(self):
         read = read_gen('ATGCAAAGGC','JJJJJJJJJJ','2A7')
         prob = self.sorter.aligned_read_prob(read)
         self.assertAlmostEqual(prob, 0.00002645868511694054719287)
-    
+
     # this read has two high-quality mismatches and therefore should have very
-    # low probability. The sequence is 1/5 high-qual mismatches.
-    
-    # NOT PASSING THIS TEST CASE, my best guess is that the really small numbers
-    # lead to weird behavior
-    # however, a sequence that is 1/5 high-qual errors will probably never be
-    # mapped by bowtie anyway
-    '''
-    def test_super_unlikely_read(self):
-        read = read_gen('ATGCAAAGGC','JJJJJJJJJJ','4GG4')
+    # low probability.
+
+    def test_unlikely_read_bc_2_high_qual_mismatch(self):
+        read = read_gen('ATGCAAAGGC','JJJJJJJJJJ','0G4G4')
         prob = self.sorter.aligned_read_prob(read)
         self.assertAlmostEqual(prob, 4.42270698591381293343184747e-11)
-    '''
 
+    # slightly longer read, many more mismatches
+    def test_longer_unlikely_read(self):
+        read = (read_gen('TTTTTTTTTTATGCAAAGGCATGCAAAGGCATGCAAAGGC',
+                         'JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ',
+                         '0AAAAAAAAAA30'))
+        prob = self.sorter.aligned_read_prob(read)
+        self.assertAlmostEqual(prob, 1.68947781999110236924280233e-46)    
+        
+    # this read is 60 bp in length
+    # half of the read are high-quality mismatches (30 total)
+    # this would never happen in real life
+    def test_longest_read_many_mismatch(self):
+        read = (read_gen('TTTTTTTTTTTTTTTTTTTTATGCAAAGGCTTTTTTTTTTATGCAAAGGCATGCAAAGGC',
+                         'JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ',
+                         '0AAAAAAAAAAAAAAAAAAAA10AAAAAAAAAA20'))
+        prob = self.sorter.aligned_read_prob(read)
+        # computed on wolframalpha like so:
+        # (10^(((74-33)*-0.1)-log10(3)))^30 * (1-10^(((74-33)*-0.1)))^30
+        self.assertAlmostEqual(prob, 4.84537506679955566671356787e-138)  
+        
 # tests for the untangle_two_mappings method, which takes reads that are mapped
 # to two different genomes and tries to assign them to the correct one.
 class test_untangle(unittest.TestCase):
@@ -169,8 +183,8 @@ class test_untangle(unittest.TestCase):
     # a slight dip in quality then read is unsorted based on default posterior
     # probability cutoff of 0.9
     def test_posterior_cutoff(self):
-        read1 = read_gen('AAGCAAAAAA','FFAAFFFFFF','2AA6')
-        read2 = read_gen('AAAAAACTAA','FFAAFFFFFF','6AA2')
+        read1 = read_gen('AAGCAAAAAA','FFBBFFFFFF','2AA6')
+        read2 = read_gen('AAAAAACTAA','FFBBFFFFFF','6AA2')
         result = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'unmapped')
         
@@ -183,18 +197,6 @@ class test_untangle(unittest.TestCase):
         result = self.sorter.untangle_two_mappings(read1, read2, posterior_cutoff=0.7)
         self.assertTrue(result == 'genome1')
     
-    # I added this test case because the program still fails the test case
-    # test_super_unlikely_read(self), which I think is caused by underflow somewhere.
-    # aggregations of mismatch probabilities can't exceed ~1e-7 on the small side.
-    # The behavior exhibited in this test case is not mathematically correct,
-    # but I think it is acceptable because if a mapping is 1/5 high-qual errors
-    # it really shouldn't be called the correct mapping anyway.
-    def test_one_mapping_really_bad(self):
-        read1 = read_gen('AAGCAAAAAA','FFJJFFFFFF','2AA6')
-        read2 = read_gen('AAAAAACTAA','FFAAFFJJJJ','6AAAA')
-        result = self.sorter.untangle_two_mappings(read1, read2, posterior_cutoff=0.7)
-        self.assertTrue(result == 'unmapped')
-        
 if __name__ == '__main__':
 
     # this try/catch block allows test suite to be run in spyder IDE interpreter

@@ -19,7 +19,6 @@ type or the other.
 
 import argparse
 import math
-import pdb
 import pysam
 import re
 
@@ -46,8 +45,8 @@ class multimapped_read_sorter():
     A mismatched base contributes M / 3: the probability that the base call was wrong
     and the called base was the observed 1 of 3 possible other bases.
     '''
-
-    MD_REGEX = re.compile("([0-9]+)([A-Z]|\^[A-Z]+)") 
+  
+    MD_REGEX = re.compile("([0-9]+)([A-Z]+|\^[A-Z]+)") 
 
     # dicts that hold precomputed matched base probabilities
     # bang is predefined as floatmin for matches to
@@ -66,7 +65,7 @@ class multimapped_read_sorter():
     # genome generated the RNA base (probability that the mismatched base was called by the sequencer)
     def log10_mismatched_base_prob(self, phred_char):
         if phred_char not in self.log10_mismatched_base_probs:
-            self.log10_mismatched_base_probs[phred_char] = ((ord(phred_char) - 33) * -0.1) - math.log10(3.0)
+            self.log10_mismatched_base_probs[phred_char] = math.log10(math.pow(10, (ord(phred_char) - 33) * -0.1)/3)#((ord(phred_char) - 33) * -0.1) - 0.47712125471966244 # log10(3) == 0.47712125471966244
         return self.log10_mismatched_base_probs[phred_char]
 
     
@@ -99,7 +98,7 @@ class multimapped_read_sorter():
                 for mismatched_base in curr_err:
                     total += self.log10_mismatched_base_prob(aligned.qual[seq_ix])                
                     seq_ix += 1
-        
+
         # step through the remaining matched bases
         while seq_ix < len(aligned.qual):
             total += self.log10_matched_base_prob(aligned.qual[seq_ix])
@@ -112,14 +111,13 @@ class multimapped_read_sorter():
     # return the name of the most likely genome
     def untangle_two_mappings(self, aligned1, aligned2, genome1_prior=0.5, posterior_cutoff=0.9, verbose = False):
         
-        genome2_prior = 1 - genome1_prior
+        genome2_prior = 1.0 - genome1_prior
         
         # probability of the read given that genome1 generated it
         prob_read_genome1 = self.aligned_read_prob(aligned1)
+
         # probabiltiy of the read given that genome2 generated it
         prob_read_genome2 = self.aligned_read_prob(aligned2)
-        if prob_read_genome1 == 0.0:
-            pdb.set_trace()
 
         # apply baiyes rule: compute probability that each genome generated the read
         # given our priors for genome1 and genome2
@@ -140,7 +138,7 @@ class multimapped_read_sorter():
 def compare_mappings(samfile1, samfile2, genome1_name, genome2_name, genome1_prior=0.5, posterior_cutoff = 0.9, verbose = False):
     
     sorter = multimapped_read_sorter()
-    
+
     # samfile objects created from samfile1 and samfile2
     sam1 = pysam.Samfile(samfile1)
     sam2 = pysam.Samfile(samfile2)
@@ -191,7 +189,7 @@ def compare_mappings(samfile1, samfile2, genome1_name, genome2_name, genome1_pri
     print '   {}\tassigned to {} based on errors'.format(match_genome1_after_analysis, genome1_name)
     print '   {}\tassigned to {} based on errors'.format(match_genome2_after_analysis, genome2_name)
     print '   {}\tunmapped based on errors'.format(no_match_after_analysis)
-
+    
 # call compare_mappings() on samfile1 and samfile2 from standard input 
 def main():
     args = parseargs()
