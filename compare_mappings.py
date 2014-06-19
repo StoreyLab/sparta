@@ -46,7 +46,7 @@ class multimapped_read_sorter():
     and the called base was the observed 1 of 3 possible other bases.
     '''
   
-    MD_REGEX = re.compile("([0-9]+)([A-Z]+|\^[A-Z]+)") 
+    MD_REGEX = re.compile("([0-9]+)([A-Z]|\^[A-Z]+)") 
 
     # dicts that hold precomputed matched base probabilities
     # bang is predefined as floatmin for matches to
@@ -89,15 +89,16 @@ class multimapped_read_sorter():
             for match in range(0, int(matched_bases)):
                 total += self.log10_matched_base_prob(aligned.qual[seq_ix])
                 seq_ix += 1
+
             # if there is a deletion, skip forward to after the deletion
             if '^' in curr_err:
                 #this is where we should handle deletions                
                 pass
+                
             # step through mismatched bases and sum log10 probabilities of that mismatch occuring
             else:
-                for mismatched_base in curr_err:
-                    total += self.log10_mismatched_base_prob(aligned.qual[seq_ix])                
-                    seq_ix += 1
+                total += self.log10_mismatched_base_prob(aligned.qual[seq_ix])                
+                seq_ix += 1
 
         # step through the remaining matched bases
         while seq_ix < len(aligned.qual):

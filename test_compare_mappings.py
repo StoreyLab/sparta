@@ -110,7 +110,7 @@ class test_aligned_read_prob(unittest.TestCase):
     def test_longer_unlikely_read(self):
         read = (read_gen('TTTTTTTTTTATGCAAAGGCATGCAAAGGCATGCAAAGGC',
                          'JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ',
-                         '0AAAAAAAAAA30'))
+                         '0A0A0A0A0A0A0A0A0A0A30'))
         prob = self.sorter.aligned_read_prob(read)
         self.assertAlmostEqual(prob, 1.68947781999110236924280233e-46)    
         
@@ -120,7 +120,7 @@ class test_aligned_read_prob(unittest.TestCase):
     def test_longest_read_many_mismatch(self):
         read = (read_gen('TTTTTTTTTTTTTTTTTTTTATGCAAAGGCTTTTTTTTTTATGCAAAGGCATGCAAAGGC',
                          'JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ',
-                         '0AAAAAAAAAAAAAAAAAAAA10AAAAAAAAAA20'))
+                         '0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A10A0A0A0A0A0A0A0A0A0A20'))
 
         prob = self.sorter.aligned_read_prob(read)
         # computed on wolframalpha like so:
@@ -151,31 +151,31 @@ class test_untangle(unittest.TestCase):
         
     # if read1 is all errors then the result should be genome2
     def test_untangle_all_errors(self):
-        read1 = read_gen('TTTTTTTTTT','FFFFFFFFFF','0AAAAAAAAAA0')
+        read1 = read_gen('TTTTTTTTTT','FFFFFFFFFF','0A0A0A0A0A0A0A0A0A0A0')
         read2 = read_gen('AAAAAAAAAA','FFFFFFFFFF','10')
         result = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'genome2')
         
     # if read1 has 2 errors but read2 has 4, result should be genome1
     def test_untangle_one_has_more_errors(self):
-        read1 = read_gen('AGCAAAAAAA','FFFFFFFFFF','1AA7')
-        read2 = read_gen('AAGGAACTAA','FFFFFFFFFF','2AA2AA2')
+        read1 = read_gen('AGCAAAAAAA','FFFFFFFFFF','1A0A7')
+        read2 = read_gen('AAGGAACTAA','FFFFFFFFFF','2A0A2A0A2')
         result = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'genome1')
         
     # if both reads have the same number of errors but genome1's
     #errors have low quality,the result should be genome1
     def test_untangle_based_on_really_low_qual_errors(self):
-        read1 = read_gen('AAGCAAAAAA','FF!!FFFFFF','2AA6')
-        read2 = read_gen('AAAAAACTAA','FF!!FFFFFF','6AA2')
+        read1 = read_gen('AAGCAAAAAA','FF!!FFFFFF','2A0A6')
+        read2 = read_gen('AAAAAACTAA','FF!!FFFFFF','6A0A2')
         result = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'genome1')
 
     # if both reads have the same number of errors but genome1's errors have low quality,
     # the result should be genome1
     def test_untangle_based_on_low_qual_errors(self):
-        read1 = read_gen('AAGCAAAAAA','FF55FFFFFF','2AA6')
-        read2 = read_gen('AAAAAACTAA','FF55FFFFFF','6AA2')
+        read1 = read_gen('AAGCAAAAAA','FF55FFFFFF','2A0A6')
+        read2 = read_gen('AAAAAACTAA','FF55FFFFFF','6A0A2')
         result = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'genome1')  
     
@@ -184,8 +184,8 @@ class test_untangle(unittest.TestCase):
     # a slight dip in quality then read is unsorted based on default posterior
     # probability cutoff of 0.9
     def test_posterior_cutoff(self):
-        read1 = read_gen('AAGCAAAAAA','FFBBFFFFFF','2AA6')
-        read2 = read_gen('AAAAAACTAA','FFBBFFFFFF','6AA2')
+        read1 = read_gen('AAGCAAAAAA','FFBBFFFFFF','2A0A6')
+        read2 = read_gen('AAAAAACTAA','FFBBFFFFFF','6A0A2')
         result = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'unmapped')
         
@@ -193,8 +193,8 @@ class test_untangle(unittest.TestCase):
     # a slight dip in quality then the by severely loosening the posterior
     # cutoff then the result should be genome1
     def test_loosened_posterior_cutoff(self):
-        read1 = read_gen('AAGCAAAAAA','FFAAFFFFFF','2AA6')
-        read2 = read_gen('AAAAAACTAA','FFAAFFFFFF','6AA2')
+        read1 = read_gen('AAGCAAAAAA','FFAAFFFFFF','2A0A6')
+        read2 = read_gen('AAAAAACTAA','FFAAFFFFFF','6A0A2')
         result = self.sorter.untangle_two_mappings(read1, read2, posterior_cutoff=0.7)
         self.assertTrue(result == 'genome1')
     
