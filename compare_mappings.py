@@ -82,7 +82,7 @@ class multimapped_read_sorter():
         total = 0
         seq_ix = 0
         # step through sequence
-        while err:
+        for matched_bases, curr_err in err:
             
             matched_bases, curr_err = err.pop(0)
             # step through the matched bases and sum log10 probabilities that the base was called correctly
@@ -92,7 +92,7 @@ class multimapped_read_sorter():
 
             # if there is a deletion, skip forward to after the deletion
             if '^' in curr_err:
-                #this is where we should handle deletions                
+                #this is where we should handle deletions
                 pass
                 
             # step through mismatched bases and sum log10 probabilities of that mismatch occuring
@@ -149,7 +149,13 @@ def compare_mappings(samfile1, samfile2, genome1_name, genome2_name, genome1_pri
     same_errors = 0
     match_genome1_after_analysis = 0
     match_genome2_after_analysis = 0
-    no_match_after_analysis      = 0    
+    no_match_after_analysis      = 0  
+    unequal_deletions = 0
+    winner_has_more_del = 0
+    winner_has_more_del_bases = 0
+    bases_and_chunks_unrelated = 0
+    
+    DEL_REGEX = re.compile("\^[A-Z]+")    
     
     for aligned1, aligned2 in zip(sam1, sam2):
         
@@ -170,6 +176,7 @@ def compare_mappings(samfile1, samfile2, genome1_name, genome2_name, genome1_pri
         else:
             # bowtie matched the read to both genomes
             # use sorter to map read to a genome
+            
             most_likely_genome = sorter.untangle_two_mappings(aligned1, aligned2, genome1_prior, posterior_cutoff, verbose=verbose)
             
             if (most_likely_genome == "genome1"):
@@ -179,6 +186,42 @@ def compare_mappings(samfile1, samfile2, genome1_name, genome2_name, genome1_pri
             elif (most_likely_genome == "unmapped"):
                 no_match_after_analysis += 1
 
+            ##############################################################
+            # Analysis of unequal deletions
+            ##############################################################
+            more_del = False
+            more_del_bases = False
+            
+            num_del_genome1 = aligned1.opt("MD").count('^')
+            num_del_genome2 = aligned2.opt("MD").count('^')       
+        
+            if num_del_genome1 != num_del_genome2:
+                unequal_deletions += 1
+                
+            if (((most_likely_genome == "genome1") and (num_del_genome1 > num_del_genome2)) or
+                ((most_likely_genome == "genome2") and (num_del_genome2 > num_del_genome1))):
+                winner_has_more_del += 1
+                more_del = True
+            
+            del1 = re.findall(DEL_REGEX, aligned1.opt("MD"))
+            del2 = re.findall(DEL_REGEX, aligned2.opt("MD"))
+            
+            total_del1 = 0
+            total_del2 = 0
+            
+            for deletion in del1:
+                total_del1 += (len(deletion) - 1)
+            
+            for deletion in del2:
+                total_del2 += (len(deletion) - 1)
+                
+            if (((most_likely_genome == "genome1") and (total_del1 > total_del2)) or
+                ((most_likely_genome == "genome2") and (total_del2 > total_del1))):
+                winner_has_more_del_bases += 1
+                more_del_bases = True
+            
+            if (more_del != more_del_bases):
+                bases_and_chunks_unrelated += 1
     # print counts of each scenario    
     
     print '\n{}\tunmapped by bowtie to either {} or {}'.format(no_match, genome1_name, genome2_name)
@@ -190,6 +233,13 @@ def compare_mappings(samfile1, samfile2, genome1_name, genome2_name, genome1_pri
     print '   {}\tassigned to {} based on errors'.format(match_genome1_after_analysis, genome1_name)
     print '   {}\tassigned to {} based on errors'.format(match_genome2_after_analysis, genome2_name)
     print '   {}\tunmapped based on errors'.format(no_match_after_analysis)
+    print
+    # unequal deletions appear to be the case in less than %1 of reads
+    print '{}\tunequal deletions'.format(unequal_deletions)
+    print '   {}\twinners had more deletion chunks'.format(winner_has_more_del)
+    print '   {}\twinners had more deleted bases'.format(winner_has_more_del_bases)
+    print '   {}\tcases of the above 2 being different'.format(bases_and_chunks_unrelated)
+
     
 # call compare_mappings() on samfile1 and samfile2 from standard input 
 def main():
