@@ -21,17 +21,25 @@ import argparse
 import math
 import pysam
 import re
+import sys
 
 # parse program input.
 def parseargs():
     
     parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument('samfile1', nargs='?', type = str, help='path to samfile 1')
-    parser.add_argument('samfile2', nargs='?', type = str, help='path to samfile 2')
-    parser.add_argument('genome1_name', nargs='?', type = str, help='name for genome 1 (reference for samfile 1)')
-    parser.add_argument('genome2_name', nargs='?', type = str, help='name for genome 2 (reference for samfile 2)') 
+    parser.add_argument('samfile1', nargs='?', type = str, help='path to samfile 1', default=sys.stdin)
+    parser.add_argument('samfile2', nargs='?', type = str, help='path to samfile 2', default=sys.stdin)
+    # optional nicknames for the genomes used in the two samfiles (recommended)    
+    parser.add_argument('-n1', '--name1', nargs='?', type = str, help='name for genome 1 (reference for samfile 1)', default=sys.stdin)
+    parser.add_argument('-n2', '--name2', nargs='?', type = str, help='name for genome 2 (reference for samfile 2)', default=sys.stdin)
+    # this is an optional verbose outfile with useful values for statistical analysis
+    parser.add_argument('-v', '--verbose_file', nargs='?', type=argparse.FileType('w'), help='specify a filename for verbose output (useful for statistical analysis)', default=sys.stdin)    
     args = parser.parse_args()
     return args
+
+# global variables
+MD_REGEX = re.compile("([0-9]+)([A-Z]|\^[A-Z]+)") 
+
 
 # sorter class that sorts an RNAseq read to one parental allele or the other
 class multimapped_read_sorter():
@@ -46,8 +54,6 @@ class multimapped_read_sorter():
     and the called base was the observed 1 of 3 possible other bases.
     '''
   
-    MD_REGEX = re.compile("([0-9]+)([A-Z]|\^[A-Z]+)") 
-
     # dicts that hold precomputed matched base probabilities
     # bang is predefined as floatmin for matches to
     # avoid taking the log of 0 and avoid the funny behavior of -Infinity
@@ -77,7 +83,7 @@ class multimapped_read_sorter():
         # 10C14AA40^T = 10 matched bases, then an unexpected C, then 14 matched
         # bases, then AA where two other bases were expected, then 40 matches, then a deleted T
 
-        err = re.findall(self.MD_REGEX, aligned.opt("MD"))
+        err = re.findall(MD_REGEX, aligned.opt("MD"))
         
         total = 0
         seq_ix = 0
@@ -127,32 +133,43 @@ class multimapped_read_sorter():
         prob_genome2 = 1.0 - prob_genome1    
 
         if (prob_genome1 >= posterior_cutoff):
-            return "genome1"
+            return "genome1", prob_genome1
         elif (prob_genome2 >= posterior_cutoff):
-            return "genome2"
+            return "genome2", prob_genome1
         else:
-            return "unmapped"
+            return "unmapped", prob_genome1
                 
                 
 # main program logic; sort RNAseq reads as belonging to one parental allele or the other
-def compare_mappings(samfile1, samfile2, genome1_name, genome2_name, genome1_prior=0.5, posterior_cutoff = 0.9, verbose = False):
+def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='genome2', genome1_prior=0.5, posterior_cutoff = 0.9, verbose_file=None):
     
+    if verbose_file:
+        verbose = True
+    else:
+        verbose = False
+    
+    # log verbose output
+    def log_verbose(err1, err2, prob1, category):
+        msg = '{}\t{}\t{}\t{}'.format(err1, err2, prob1, category)        
+        print >> verbose_file, msg
+        
     sorter = multimapped_read_sorter()
 
     # samfile objects created from samfile1 and samfile2
     sam1 = pysam.Samfile(samfile1)
     sam2 = pysam.Samfile(samfile2)
     
-    no_match    = 0
-    match1      = 0
-    same_errors = 0
-    match_genome1_after_analysis = 0
-    match_genome2_after_analysis = 0
-    no_match_after_analysis      = 0  
-    unequal_deletions = 0
-    winner_has_more_del = 0
-    winner_has_more_del_bases = 0
-    bases_and_chunks_unrelated = 0
+    no_match           = 0
+    match1             = 0
+    match2             = 0
+    same_errors        = 0
+    classified1        = 0
+    classified2        = 0
+    unclassified       = 0  
+    unequal_deletions  = 0
+    del_seqs_mattered  = 0
+    del_bases_mattered = 0
+    bases_seqs_unrel   = 0
     
     DEL_REGEX = re.compile("\^[A-Z]+")    
     
@@ -163,27 +180,59 @@ def compare_mappings(samfile1, samfile2, genome1_name, genome2_name, genome1_pri
         if aligned1.is_unmapped and aligned2.is_unmapped:
             #this read is probably junk
             no_match += 1
-            continue
-        elif aligned1.is_unmapped != aligned2.is_unmapped:
-            #maps to one but not the other; either junk or
+            if verbose:
+                log_verbose('NA','NA','NA', 'unmapped')
+                
+        elif (not aligned1.is_unmapped) and aligned2.is_unmapped:
+            #maps to alignment1 but not alignment2; either junk or
             #an unshared gene bw BY and RM
             match1 += 1
-            continue
+            if verbose:
+                num_err1 = len(re.findall(MD_REGEX, aligned1.opt("MD")))
+                log_verbose(num_err1, 'NA', '1', 'mapped {}'.format(genome1_name))
+        
+        elif aligned1.is_unmapped and (not aligned2.is_unmapped):
+            #maps to alignment2 but not alignment1; either junk or
+            #an unshared gene bw BY and RM
+            match2 += 1
+            if verbose:
+                num_err2 = len(re.findall(MD_REGEX, aligned2.opt("MD")))
+                log_verbose('NA', num_err2, '0', 'mapped {}'.format(genome2_name))
+
         elif aligned1.opt("MD") == aligned2.opt("MD"):
             # same errors
             same_errors += 1
+            if verbose:
+                num_err1 = len(re.findall(MD_REGEX, aligned2.opt("MD")))
+                num_err2 = len(re.findall(MD_REGEX, aligned2.opt("MD")))
+                log_verbose(num_err1, num_err2, '0.5', 'ambiguous: same errors')
+        
         else:
             # bowtie matched the read to both genomes
             # use sorter to map read to a genome
             
-            most_likely_genome = sorter.untangle_two_mappings(aligned1, aligned2, genome1_prior, posterior_cutoff, verbose=verbose)
+            most_likely_genome, prob_genome1 = sorter.untangle_two_mappings(aligned1, aligned2, genome1_prior, posterior_cutoff, verbose=verbose)
             
+            if verbose:
+                num_err1 = len(re.findall(MD_REGEX, aligned2.opt("MD")))
+                num_err2 = len(re.findall(MD_REGEX, aligned2.opt("MD")))                
+            else:
+                num_err1, num_err2 = None, None
+                
             if (most_likely_genome == "genome1"):
-                match_genome1_after_analysis += 1
+                classified1 += 1
+                if verbose:
+                    log_verbose(num_err1, num_err2, prob_genome1, 'classified {}'.format(genome1_name))
+                    
             elif (most_likely_genome == "genome2"):
-                match_genome2_after_analysis += 1
+                classified2 += 1
+                if verbose:
+                    log_verbose(num_err1, num_err2, prob_genome1, 'classified {}'.format(genome2_name))
+
             elif (most_likely_genome == "unmapped"):
-                no_match_after_analysis += 1
+                unclassified += 1
+                if verbose:
+                    log_verbose(num_err1, num_err2, prob_genome1, 'unclassified')
 
             ##############################################################
             # Analysis of unequal deletions
@@ -199,7 +248,7 @@ def compare_mappings(samfile1, samfile2, genome1_name, genome2_name, genome1_pri
                 
             if (((most_likely_genome == "genome1") and (num_del_genome1 > num_del_genome2)) or
                 ((most_likely_genome == "genome2") and (num_del_genome2 > num_del_genome1))):
-                winner_has_more_del += 1
+                del_seqs_mattered += 1
                 more_del = True
             
             del1 = re.findall(DEL_REGEX, aligned1.opt("MD"))
@@ -216,38 +265,43 @@ def compare_mappings(samfile1, samfile2, genome1_name, genome2_name, genome1_pri
                 
             if (((most_likely_genome == "genome1") and (total_del1 > total_del2)) or
                 ((most_likely_genome == "genome2") and (total_del2 > total_del1))):
-                winner_has_more_del_bases += 1
+                del_bases_mattered += 1
                 more_del_bases = True
             
             if (more_del != more_del_bases):
-                bases_and_chunks_unrelated += 1
+                bases_seqs_unrel += 1
+                
     # print counts of each scenario    
     
     print '\n{}\tunmapped by bowtie to either {} or {}'.format(no_match, genome1_name, genome2_name)
     print '{}\tmapped by bowtie to either {} or {}'.format(match1, genome1_name, genome2_name)
     print '{}\tmapped by bowtie to both {} or {}, but errors are same'.format(same_errors, genome1_name, genome2_name)
     #note: but I didn't look for dips in quality scores...?
-    total_mapped_to_both = match_genome1_after_analysis + match_genome2_after_analysis + no_match_after_analysis
+    total_mapped_to_both = classified1 + classified2 + unclassified
     print '{}\tmapped by bowtie to both {} and {}:'.format(total_mapped_to_both, genome1_name, genome2_name)    
-    print '   {}\tassigned to {} based on errors'.format(match_genome1_after_analysis, genome1_name)
-    print '   {}\tassigned to {} based on errors'.format(match_genome2_after_analysis, genome2_name)
-    print '   {}\tunmapped based on errors'.format(no_match_after_analysis)
+    print '   {}\tassigned to {} based on errors'.format(classified1, genome1_name)
+    print '   {}\tassigned to {} based on errors'.format(classified2, genome2_name)
+    print '   {}\tunmapped based on errors'.format(unclassified)
     print
     # unequal deletions appear to be the case in less than %1 of reads
     print '{}\tunequal deletions'.format(unequal_deletions)
-    print '   {}\twinners had more deletion chunks'.format(winner_has_more_del)
-    print '   {}\twinners had more deleted bases'.format(winner_has_more_del_bases)
-    print '   {}\tcases of the above 2 being different'.format(bases_and_chunks_unrelated)
+    print '   {}\twinners had more deletion seqs'.format(del_seqs_mattered)
+    print '   {}\twinners had more deleted bases'.format(del_bases_mattered)
+    print '   {}\tcases of the above 2 being different'.format(bases_seqs_unrel)
 
     
 # call compare_mappings() on samfile1 and samfile2 from standard input 
 def main():
     args = parseargs()
+    print args
     samfile1 = args.samfile1
     samfile2 = args.samfile2
-    genome1_name = args.genome1_name
-    genome2_name = args.genome2_name
-    compare_mappings(samfile1, samfile2, genome1_name, genome2_name, verbose=True)
-
+    genome1_name = args.name1
+    genome2_name = args.name2
+    verbose_file = args.verbose_file
+    compare_mappings(samfile1, samfile2, genome1_name, genome2_name, verbose_file=verbose_file)
+    
+    # close output files
+    verbose_file.close()
 if __name__ == '__main__':
     main()

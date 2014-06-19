@@ -134,33 +134,36 @@ class test_untangle(unittest.TestCase):
     def setUp(self):
         self.sorter = compare_mappings.multimapped_read_sorter()
     
+    # variable to hold prob_genome1 in return result.
+    NIL = 0.0
+    
     # if neither sequence has errors then it is impossible to map
     # result should be unmapped
     def test_untangle_both_errorfree(self):
         read1 = read_gen('AAAAAAAAAA','FFFFFFFFFF','10')
         read2 = read_gen('AAAAAAAAAA','FFFFFFFFFF','10')
-        result = self.sorter.untangle_two_mappings(read1, read2)
+        result, NIL = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'unmapped')
     
     # if read1 has one error then the result should be genome2
     def test_untangle_one_error(self):
         read1 = read_gen('AAATAAAAAA','FFFFFFFFFF','3T6')
         read2 = read_gen('AAAAAAAAAA','FFFFFFFFFF','10')
-        result = self.sorter.untangle_two_mappings(read1, read2)
+        result, NIL = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'genome2')
         
     # if read1 is all errors then the result should be genome2
     def test_untangle_all_errors(self):
         read1 = read_gen('TTTTTTTTTT','FFFFFFFFFF','0A0A0A0A0A0A0A0A0A0A0')
         read2 = read_gen('AAAAAAAAAA','FFFFFFFFFF','10')
-        result = self.sorter.untangle_two_mappings(read1, read2)
+        result, NIL = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'genome2')
         
     # if read1 has 2 errors but read2 has 4, result should be genome1
     def test_untangle_one_has_more_errors(self):
         read1 = read_gen('AGCAAAAAAA','FFFFFFFFFF','1A0A7')
         read2 = read_gen('AAGGAACTAA','FFFFFFFFFF','2A0A2A0A2')
-        result = self.sorter.untangle_two_mappings(read1, read2)
+        result, NIL = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'genome1')
         
     # if both reads have the same number of errors but genome1's
@@ -168,7 +171,7 @@ class test_untangle(unittest.TestCase):
     def test_untangle_based_on_really_low_qual_errors(self):
         read1 = read_gen('AAGCAAAAAA','FF!!FFFFFF','2A0A6')
         read2 = read_gen('AAAAAACTAA','FF!!FFFFFF','6A0A2')
-        result = self.sorter.untangle_two_mappings(read1, read2)
+        result, NIL = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'genome1')
 
     # if both reads have the same number of errors but genome1's errors have low quality,
@@ -176,7 +179,7 @@ class test_untangle(unittest.TestCase):
     def test_untangle_based_on_low_qual_errors(self):
         read1 = read_gen('AAGCAAAAAA','FF55FFFFFF','2A0A6')
         read2 = read_gen('AAAAAACTAA','FF55FFFFFF','6A0A2')
-        result = self.sorter.untangle_two_mappings(read1, read2)
+        result, NIL = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'genome1')  
     
     # test posterier cutoff
@@ -186,7 +189,7 @@ class test_untangle(unittest.TestCase):
     def test_posterior_cutoff(self):
         read1 = read_gen('AAGCAAAAAA','FFBBFFFFFF','2A0A6')
         read2 = read_gen('AAAAAACTAA','FFBBFFFFFF','6A0A2')
-        result = self.sorter.untangle_two_mappings(read1, read2)
+        result, NIL = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'unmapped')
         
     # if both reads have the same number of errors and genome1's errors only have
@@ -195,7 +198,7 @@ class test_untangle(unittest.TestCase):
     def test_loosened_posterior_cutoff(self):
         read1 = read_gen('AAGCAAAAAA','FFAAFFFFFF','2A0A6')
         read2 = read_gen('AAAAAACTAA','FFAAFFFFFF','6A0A2')
-        result = self.sorter.untangle_two_mappings(read1, read2, posterior_cutoff=0.7)
+        result, NIL = self.sorter.untangle_two_mappings(read1, read2, posterior_cutoff=0.7)
         self.assertTrue(result == 'genome1')
     
 if __name__ == '__main__':
