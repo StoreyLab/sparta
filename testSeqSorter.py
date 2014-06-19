@@ -7,6 +7,7 @@ Created on Tue Jun 17 16:44:51 2014
 @author: Peter Edge
 """
 
+from __future__ import print_function
 import unittest
 import SeqSorter
 import math

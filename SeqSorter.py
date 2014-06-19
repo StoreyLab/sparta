@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
+
 '''
 Created on Mon Jun 16 10:56:22 2014
 
@@ -70,6 +72,14 @@ def parseargs():
 # more information about the MD string: page 7 of http://samtools.github.io/hts-specs/SAMv1.pdf
 MD_REGEX = re.compile("([0-9]+)([A-Z]|\^[A-Z]+)") 
 
+# this method allows for Python 3.4.1 compatibility
+# it is needed because in 2.7.7, indexing into a pysam qual string gives a char.
+# in Python 3.4.1, however, indexing into qual string gives an int.
+def custom_ord(phred_char):
+    if type(phred_char) is int:
+        return phred_char
+    else:
+        return ord(phred_char)
 
 # sorter class that sorts an RNAseq read to one parental allele or the other
 class multimapped_read_sorter():
@@ -95,14 +105,14 @@ class multimapped_read_sorter():
     # that the genome generated the RNA base (probability of correctly called base)
     def log10_matched_base_prob(self, phred_char):
         if phred_char not in self.log10_matched_base_probs:
-            self.log10_matched_base_probs[phred_char] = math.log10(1.0 - math.pow(10, (ord(phred_char) - 33) * -0.1))
+            self.log10_matched_base_probs[phred_char] = math.log10(1.0 - math.pow(10, (custom_ord(phred_char) - 33) * -0.1))
         return self.log10_matched_base_probs[phred_char]
     
     # given a phred score and assuming an RNA/genome base mismatch, compute the probability that the
     # genome generated the RNA base (probability that the mismatched base was called by the sequencer)
     def log10_mismatched_base_prob(self, phred_char):
         if phred_char not in self.log10_mismatched_base_probs:
-            self.log10_mismatched_base_probs[phred_char] = ((ord(phred_char) - 33) * -0.1) - 0.47712125471966244 # log10(3) == 0.47712125471966244
+            self.log10_mismatched_base_probs[phred_char] = ((custom_ord(phred_char) - 33) * -0.1) - 0.47712125471966244 # log10(3) == 0.47712125471966244
         return self.log10_mismatched_base_probs[phred_char]
 
     
@@ -179,7 +189,7 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
         # helper function to log verbose output
         def log_verbose(err1, err2, prob1, category):
             msg = '{}\t{}\t{}\t{}'.format(err1, err2, prob1, category)        
-            print >> verbose_file, msg
+            print(msg, file=verbose_file)
         
         #print header
         log_verbose('err {}'.format(genome1_name),'err {}'.format(genome2_name),'prob {}'.format(genome1_name),'category')
@@ -251,7 +261,7 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
             most_likely_genome, prob_genome1 = sorter.untangle_two_mappings(aligned1, aligned2, genome1_prior, posterior_cutoff, verbose=verbose)
             
             if verbose:
-                num_err1 = len(re.findall(MD_REGEX, aligned2.opt("MD")))
+                num_err1 = len(re.findall(MD_REGEX, aligned1.opt("MD")))
                 num_err2 = len(re.findall(MD_REGEX, aligned2.opt("MD")))                
             else:
                 num_err1, num_err2 = None, None
@@ -325,20 +335,20 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
     
     # print counts of each scenario    
     
-    print '\n{}\tunmapped by bowtie to either {} or {}'.format(no_match, genome1_name, genome2_name)
-    print '{}\tmapped by bowtie to either {} or {}'.format(match1, genome1_name, genome2_name)
-    print '{}\tmapped by bowtie to both {} or {}, but errors are same'.format(same_errors, genome1_name, genome2_name)
+    print('\n{}\tunmapped by bowtie to either {} or {}'.format(no_match, genome1_name, genome2_name))
+    print('{}\tmapped by bowtie to either {} or {}'.format(match1, genome1_name, genome2_name))
+    print('{}\tmapped by bowtie to both {} or {}, but errors are same'.format(same_errors, genome1_name, genome2_name))
     total_mapped_to_both = classified1 + classified2 + unclassified
-    print '{}\tmapped by bowtie to both {} and {}:'.format(total_mapped_to_both, genome1_name, genome2_name)    
-    print '   {}\tassigned to {} based on errors'.format(classified1, genome1_name)
-    print '   {}\tassigned to {} based on errors'.format(classified2, genome2_name)
-    print '   {}\tunmapped based on errors'.format(unclassified)
+    print('{}\tmapped by bowtie to both {} and {}:'.format(total_mapped_to_both, genome1_name, genome2_name))
+    print('   {}\tassigned to {} based on errors'.format(classified1, genome1_name))
+    print('   {}\tassigned to {} based on errors'.format(classified2, genome2_name))
+    print('   {}\tunmapped based on errors'.format(unclassified))
     print
-    print '{}\tcases of difference in number of deleted seqs'.format(diff_number_del_seqs)
-    print '{}\tcases of difference in number of deleted bases'.format(diff_number_del_bases)
-    print '   {}\twinners had more deleted seqs'.format(del_seqs_mattered)
-    print '   {}\twinners had more deleted bases'.format(del_bases_mattered)
-    print '   {}\tcases of the above 2 being different'.format(bases_seqs_unrel)
+    print('{}\tcases of difference in number of deleted seqs'.format(diff_number_del_seqs))
+    print('{}\tcases of difference in number of deleted bases'.format(diff_number_del_bases))
+    print('   {}\twinners had more deleted seqs'.format(del_seqs_mattered))
+    print('   {}\twinners had more deleted bases'.format(del_bases_mattered))
+    print('   {}\tcases of the above 2 being different'.format(bases_seqs_unrel))
 
 
 # main logic
