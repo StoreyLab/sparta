@@ -9,6 +9,7 @@ Created on Tue Jun 17 16:44:51 2014
 
 from __future__ import print_function
 import unittest
+import math
 import SeqSorter
 import pysam
 
@@ -96,7 +97,7 @@ class test_aligned_read_prob(unittest.TestCase):
     def test_unlikely_read_bc_2_high_qual_mismatch(self):
         read = read_gen('ATGCAAAGGC','JJJJJJJJJJ','0G4G4')
         prob = self.sorter.aligned_read_prob(read)
-        self.assertAlmostEqual(prob, 4.42270698591381293343184747e-11)
+        self.assertAlmostEqual(math.log10(prob), math.log10(7.0061834016176909988601998e-10))
 
     # slightly longer read, many more mismatches
     def test_longer_unlikely_read(self):
@@ -104,7 +105,7 @@ class test_aligned_read_prob(unittest.TestCase):
                          'JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ',
                          '0A0A0A0A0A0A0A0A0A0A30'))
         prob = self.sorter.aligned_read_prob(read)
-        self.assertAlmostEqual(prob, 1.68947781999110236924280233e-46)    
+        self.assertAlmostEqual(math.log10(prob), math.log10(1.6894778199911023692428023e-46))    
         
     # this read is 60 bp in length
     # half of the read are high-quality mismatches (30 total)
@@ -117,7 +118,7 @@ class test_aligned_read_prob(unittest.TestCase):
         prob = self.sorter.aligned_read_prob(read)
         # computed on wolframalpha like so:
         # (10^(((74-33)*-0.1)-log10(3)))^30 * (1-10^(((74-33)*-0.1)))^30
-        self.assertAlmostEqual(prob, 4.84537506679955566671356787e-138)  
+        self.assertAlmostEqual(math.log10(prob), math.log10(4.84537506679955566671356787e-138))  
     
     # same test as before but do it 1e5 times to test overhead of prob lookup
     '''
@@ -130,7 +131,7 @@ class test_aligned_read_prob(unittest.TestCase):
             prob = self.sorter.aligned_read_prob(read)
             # computed on wolframalpha like so:
             # (10^(((74-33)*-0.1)-log10(3)))^30 * (1-10^(((74-33)*-0.1)))^30
-            self.assertAlmostEqual(prob, 4.84537506679955566671356787e-138)
+            self.assertAlmostEqual(math.log10(prob), math.log10(4.84537506679955566671356787e-138))
     '''
 # tests for the untangle_two_mappings method, which takes reads that are mapped
 # to two different genomes and tries to assign them to the correct one.
