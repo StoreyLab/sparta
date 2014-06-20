@@ -10,7 +10,6 @@ Created on Tue Jun 17 16:44:51 2014
 from __future__ import print_function
 import unittest
 import SeqSorter
-import math
 import pysam
 
 # take a sequence, quality string, and MD string and return an aligned_read object
@@ -31,19 +30,15 @@ class test_matched_prob(unittest.TestCase):
         self.sorter = SeqSorter.multimapped_read_sorter()
     
     def test_F(self):
-        prob = self.sorter.log10_matched_base_prob('F')
+        prob = self.sorter.log10_matched_base_prob[70]
         self.assertAlmostEqual(prob, -0.0000866617872714981203221)
 
     def test_crunch(self):
-        prob = self.sorter.log10_matched_base_prob('#')
+        prob = self.sorter.log10_matched_base_prob[35]
         self.assertAlmostEqual(prob, -0.4329234333362482973965396)
-
-    def test_bang(self):
-        prob = self.sorter.log10_matched_base_prob('!')
-        self.assertAlmostEqual(prob, math.log10(0.25))
         
     def test_tilde(self):
-        prob = self.sorter.log10_matched_base_prob('~')
+        prob = self.sorter.log10_matched_base_prob[126]
         self.assertAlmostEqual(prob, -2.1766285001922517006651895e-10)
         
 
@@ -57,19 +52,15 @@ class test_mismatched_prob(unittest.TestCase):
         self.sorter = SeqSorter.multimapped_read_sorter()
     
     def test_F(self):
-        prob = self.sorter.log10_mismatched_base_prob('F')
+        prob = self.sorter.log10_mismatched_base_prob[70]
         self.assertAlmostEqual(prob, -4.1771212547196624372950279)
 
     def test_crunch(self):
-        prob = self.sorter.log10_mismatched_base_prob('#')
+        prob = self.sorter.log10_mismatched_base_prob[35]
         self.assertAlmostEqual(prob, -0.6771212547196624372950279)
-
-    def test_bang(self):
-        prob = self.sorter.log10_mismatched_base_prob('!')
-        self.assertAlmostEqual(prob, math.log10(0.25))
         
     def test_tilde(self):
-        prob = self.sorter.log10_mismatched_base_prob('~')
+        prob = self.sorter.log10_mismatched_base_prob[126]
         self.assertAlmostEqual(prob, -9.7771212547196624372950279) 
 
 
@@ -87,11 +78,11 @@ class test_aligned_read_prob(unittest.TestCase):
         prob = self.sorter.aligned_read_prob(read)
         self.assertAlmostEqual(prob, 0.98694488490516351120939182)
         
-    # this read has low quality and should have a lower probability than previous
+    # this read has matches with probability 0 so result should be 0
     def test_unlikely_read_bc_garbage_quality(self):
         read = read_gen('ATGCAAAGGC','!2222!!111','10')
         prob = self.sorter.aligned_read_prob(read)
-        self.assertAlmostEqual(prob, 0.01335559708084671580915440)
+        self.assertAlmostEqual(prob, 0.0)
 
     # this read is high quality but has an error; should have low probability
     def test_unlikely_read_bc_high_qual_mismatch(self):
@@ -127,7 +118,20 @@ class test_aligned_read_prob(unittest.TestCase):
         # computed on wolframalpha like so:
         # (10^(((74-33)*-0.1)-log10(3)))^30 * (1-10^(((74-33)*-0.1)))^30
         self.assertAlmostEqual(prob, 4.84537506679955566671356787e-138)  
-        
+    
+    # same test as before but do it 1e5 times to test overhead of prob lookup
+    '''
+    def test_lookup_overhead(self):
+        for i in range(0,10000):
+            read = (read_gen('TTTTTTTTTTTTTTTTTTTTATGCAAAGGCTTTTTTTTTTATGCAAAGGCATGCAAAGGC',
+                             'JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ',
+                             '0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A10A0A0A0A0A0A0A0A0A0A20'))
+    
+            prob = self.sorter.aligned_read_prob(read)
+            # computed on wolframalpha like so:
+            # (10^(((74-33)*-0.1)-log10(3)))^30 * (1-10^(((74-33)*-0.1)))^30
+            self.assertAlmostEqual(prob, 4.84537506679955566671356787e-138)
+    '''
 # tests for the untangle_two_mappings method, which takes reads that are mapped
 # to two different genomes and tries to assign them to the correct one.
 class test_untangle(unittest.TestCase):
