@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 """
 Created on Mon Jun 23 16:21:32 2014
@@ -13,9 +14,16 @@ actual observed scores at each phred score.
 '''
 
 import argparse
+import copy
 import collections
+from pprint import pprint
 import pysam
+import re
 import sys
+
+# regex for the MD string that specifies errors from the reference.
+# more information about the MD string: page 7 of http://samtools.github.io/hts-specs/SAMv1.pdf
+MD_REGEX = re.compile("([0-9]+)([A-Z]|\^[A-Z]+)")
 
 def parseargs():
     
@@ -36,61 +44,66 @@ def parseargs():
     args = parser.parse_args()
     return args
 
-'''
-class consensus_dict(collections.defaultdict):
+# take an aligned read, return the genomic seq EXCEPT for deletions (^)
+def create_genome_seq(aligned):
     
-    # if key is missing then perform a pileup, determine the consensus base,
-    # and return the consensus base or NULL if unclear or unmatched to BY/RM
-    def __missing__(key):
-        chrom1, chrom2, pos1, pos2, samfile1 = key
-        for pileupcolumn in samfile.pileup(chr1, 100, 120):
+    genome_seq = list(copy.copy(aligned.seq))
+    
+    # see samtools documentation for MD string
+    err = re.findall(MD_REGEX, aligned.opt("MD"))
+    
+    seq_ix = 0
+    
+    # step through sequence
+    for matched_bases, curr_err in err:
+        
+        seq_ix += int(matched_bases)
+        
+        if '^' not in curr_err:
             
-            for pileupread in pileupcolumn.pileups:
-        
-        return
-'''
-        
+            genome_seq[seq_ix] = curr_err
+            seq_ix += 1
+            
+    return genome_seq 
+    
 def count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, output_file):
     
-    sam1 = pysam.Samfile(samfile1)
-    sam2 = pysam.Samfile(samfile2)
+    bigsam1 = pysam.Samfile(samfile1)
+    bigsam2 = pysam.Samfile(samfile2)
     
-    results = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
-    
-    for aligned1, aligned2 in zip(sam1, sam2):
+    # for the time being, BY MUST BE FIRST
+    sam1 = bigsam1.fetch('ref|NC_001139|')
+    sam2 = bigsam2.fetch('chr07')
 
+    results = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
+        
+    for aligned1, aligned2 in zip(sam1, sam2):
+        
         assert aligned1.qname == aligned2.qname
         
-        if aligned1.is_unmapped and aligned2.is_unmapped:
-            # both unmapped 
-            pass
-        
-        elif not aligned1.is_unmapped and aligned2.is_unmapped:
-            # only alignment1 mapped            
-            pass
-        
-        elif aligned1.is_unmapped and not aligned2.is_unmapped:
-            # only alignment2 mapped
-            pass
-        else:
+        if not aligned1.is_unmapped and not aligned2.is_unmapped:
             
             assert len(aligned1.seq) == len(aligned2.seq)
+            
             # both alignments mapped
             pos_dict1 = dict(aligned1.aligned_pairs)
             pos_dict2 = dict(aligned2.aligned_pairs)
-                        
+            
+            qual = bytearray(aligned1.qual)
+            genome_seq1 = create_genome_seq(aligned1)
+            genome_seq2 = create_genome_seq(aligned2)
+            
             for i in range(0, len(aligned1.seq)):
                             
-                if aligned1.seq[i] == aligned2.seq[i]:
+                if genome_seq1[i] == genome_seq2[i]:
                     
                     chrom1 = sam1.getrname(aligned1.tid)
                     pos1 = pos_dict1[i]      
                     chrom2 = sam2.getrname(aligned2.tid)
                     pos2 = pos_dict2[i]
                     
-                    results[(chrom1, chrom2, pos1, pos2)][aligned1.seq[i]][aligned1.qual[i]] += 1
+                    results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1.seq[i]][qual[i]] += 1
             
-
     return results
 
 # main logic
@@ -133,9 +146,11 @@ def main():
         total_bases = sum([v for k,v in base_count.iteritems()])
         cutoff = 0.75
         consensus = 'N'
-        
+
+        # if more than 0.75 of reads agree on a base, and if the genomic sequence
+        # in that position is that same base, then it is the consensus.       
         for base, count in base_count.iteritems():
-            if count > cutoff * total_bases:
+            if count > cutoff * total_bases and base == coordinate_pairs[5]:
                 consensus = base
                
                
@@ -154,12 +169,19 @@ def main():
                 else:
                     quality_score_mismatch_counter[qual] += num
                     
+    mismatch_prob_dict = {}
+    
     for qual, mismatch_count in quality_score_mismatch_counter.iteritems():
+
         mismatch_prob = mismatch_count * 1.0 / ((mismatch_count + quality_score_match_counter[qual])*1.0)
-        print('{}\t{}'.format(qual,mismatch_prob))
-        
+        mismatch_prob_dict[qual] = mismatch_prob
+
+    pprint(mismatch_prob_dict)
+    
     # close output files
     output_file.close()
     
+    return mismatch_prob_dict
+
 if __name__ == '__main__':
     main()
