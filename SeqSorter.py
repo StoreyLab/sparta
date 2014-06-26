@@ -211,7 +211,7 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
     DEL_REGEX = re.compile("\^[A-Z]+")    
     
     for aligned1, aligned2 in zip(sam1, sam2):
-        
+                    
         assert aligned1.qname == aligned2.qname     
         
         if aligned1.is_unmapped and aligned2.is_unmapped:
@@ -247,7 +247,7 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
         else:
             # bowtie matched the read to both genomes
             # use sorter to map read to a genome
-            
+                
             most_likely_genome, prob_genome1 = sorter.untangle_two_mappings(aligned1, aligned2, genome1_prior, posterior_cutoff, verbose=verbose)
             
             if verbose:

@@ -1,6 +1,7 @@
 \documentclass[11pt]{article}
 %Gummi|065|=)
 \usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
 \title{\textbf{Storey Lab Notebook}}
 \author{Peter Edge}
 \begin{document}
@@ -34,4 +35,30 @@ bowtie2 -x S288C_bowtie_test/BY_index -U E2a0_sample.fastq
 I then started experimenting with pysam to understand how the library is used to access data from the alignment files.
 \section*{June 13, 2014}
 Today I narrowed my focus to the method compare\_mappings(infiles, outfile), since this is where the initial focus of my project will be. I familiarized myself with using pysam for navigating SAM files, using the alignment SAMs from the test dataset (created yesterday).
+
+\section*{June 16 - 20, 2014}
+This week was spent coding, testing, and analyzing the initial prototype of SeqSort.py. All notes relevant to this process are in the messages appended to the github commits page and the issues tracker, while notes that pertain to code only are in the comments of SeqSort.py and testSeqSort.py:
+
+\begin{verbatim}
+https://github.com/dgrtwo/SeqSorter
+\end{verbatim}
+\noindent
+Equation for the calculation of Pr(read \textbar\ BY):
+\begin{equation*}
+Pr(read | BY) = \prod_{i=1}^{L}\begin{cases}
+    1 - Pr(\text{miscall}), & \text{if }R_{L}\text{ matches } BY_{L}\\
+    \frac{Pr(\text{miscall})}{3}, & \text{otherwise}
+  \end{cases}
+\end{equation*}
+\smallskip
+Pr(read \textbar\ RM) is calculated in the same fashion. Pr(BY \textbar\ read) is calculated as follows, via Baiyes Rule with the law of total probability, (priors of 0.5 are assumed for BY and RM and divide out):
+\begin{equation*}
+  Pr(BY | read) = \frac{Pr(read | BY)}{Pr(read | BY) + Pr(read | RM)}
+\end{equation*}
+
+SortSeq computes the probability of BY and probability of RM for reads that bowtie maps to both. 
+
+\section*{June 23, 2014}
+Today David outlined for me a way to add a layer of sophistication for SortSeq, at least for our current experiment: handling the problem of read quality scores being an inaccurate representation of the probability of a mismatch. I will start by accumulating information about the proportion of bases for a given quality score in the RNAseq reads that are likely to be mismatches, and then "correcting" the values associated with various quality scores.
+
 \end{document}
