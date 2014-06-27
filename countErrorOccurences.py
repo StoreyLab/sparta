@@ -71,12 +71,10 @@ def create_genome_seq(aligned):
     
 def count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, output_file):
     
-    bigsam1 = pysam.Samfile(samfile1)
-    bigsam2 = pysam.Samfile(samfile2)
+    sam1 = pysam.Samfile(samfile1)
+    sam2 = pysam.Samfile(samfile2)
     
     # for the time being, BY MUST BE FIRST
-    sam1 = bigsam1.fetch('ref|NC_001139|')
-    sam2 = bigsam2.fetch('RM11_1A.chr07')
 
     results = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
         
