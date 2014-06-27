@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
+import sys
+sys.path.insert(0,'fake_root/usr/local/python/lib/python2.7/site-packages/')
+
 '''
 Created on Mon Jun 16 10:56:22 2014
 
