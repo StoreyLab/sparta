@@ -198,14 +198,13 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
 
     else:
         verbose = False
-    
     if estimate_error_prob:
         mismatch_prob_dict = countErrorOccurences.count_error_occurrences()
     else:
         mismatch_prob_dict = None
-        
+     
     sorter = multimapped_read_sorter(mismatch_prob_dict)
-
+    
     # samfile objects created from samfile1 and samfile2
     sam1 = pysam.Samfile(samfile1)
     sam2 = pysam.Samfile(samfile2)
@@ -226,10 +225,10 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
     
     # regex for MD deletions, for tracking unequal deletions
     DEL_REGEX = re.compile("\^[A-Z]+")    
-    
+
     for aligned1, aligned2 in zip(sam1, sam2):
                     
-        assert aligned1.qname == aligned2.qname     
+        assert aligned1.qname == aligned2.qname
         
         if aligned1.is_unmapped and aligned2.is_unmapped:
             #this read is probably junk
