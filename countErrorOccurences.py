@@ -73,7 +73,7 @@ def count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, outp
     
     # for the time being, BY MUST BE FIRST
     sam1 = bigsam1.fetch('ref|NC_001139|')
-    sam2 = bigsam2.fetch('chr07')
+    sam2 = bigsam2.fetch('RM11_1A.chr07')
 
     results = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
         
