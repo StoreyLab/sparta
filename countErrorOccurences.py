@@ -175,7 +175,7 @@ def main():
 
         mismatch_prob = mismatch_count * 1.0 / ((mismatch_count + quality_score_match_counter[qual])*1.0)
         mismatch_prob_dict[qual] = mismatch_prob
-
+        
     pprint(mismatch_prob_dict)
     
     # close output files

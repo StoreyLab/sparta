@@ -199,7 +199,7 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
     else:
         verbose = False
     if estimate_error_prob:
-        mismatch_prob_dict = countErrorOccurences.count_error_occurrences()
+        mismatch_prob_dict = countErrorOccurences.count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, 'count_error_occurences_out')
     else:
         mismatch_prob_dict = None
      
