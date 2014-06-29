@@ -77,9 +77,9 @@ def count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, outp
     # for the time being, BY MUST BE FIRST
 
     results = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
-        
+    
     for aligned1, aligned2 in zip(sam1, sam2):
-        
+
         assert aligned1.qname == aligned2.qname
         
         if not aligned1.is_unmapped and not aligned2.is_unmapped:
@@ -104,25 +104,8 @@ def count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, outp
                     pos2 = pos_dict2[i]
                     
                     results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1.seq[i]][qual[i]] += 1
-            
-    return results
-
-# main logic
-# call compare_mappings() on samfile1 and samfile2 from standard input 
-def main():
     
-    # get command line args
-    args = parseargs()
-    samfile1 = args.samfile1
-    samfile2 = args.samfile2
-    genome1_name = args.name1
-    genome2_name = args.name2
-    output_file = args.output_file
-    
-    # compare mappings between samfiles
-    results = count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, output_file)
-    
-    quality_score_match_counter = collections.defaultdict(int)
+        quality_score_match_counter = collections.defaultdict(int)
     quality_score_mismatch_counter = collections.defaultdict(int)
     
     for coordinate_pairs, nuc_to_qual_dict in results.iteritems():
@@ -151,7 +134,7 @@ def main():
         # if more than 0.75 of reads agree on a base, and if the genomic sequence
         # in that position is that same base, then it is the consensus.       
         for base, count in base_count.iteritems():
-            if count > cutoff * total_bases and base == coordinate_pairs[5]:
+            if count > cutoff * total_bases and base == coordinate_pairs[4]:
                 consensus = base
                
                
@@ -179,10 +162,29 @@ def main():
         
     pprint(mismatch_prob_dict)
     
+    return mismatch_prob_dict
+
+# main logic
+# call compare_mappings() on samfile1 and samfile2 from standard input 
+def main():
+    
+    # get command line args
+    args = parseargs()
+    samfile1 = args.samfile1
+    samfile2 = args.samfile2
+    genome1_name = args.name1
+    genome2_name = args.name2
+    output_file = args.output_file
+    
+    # compare mappings between samfiles
+    results = count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, output_file)
+    
+
+    
     # close output files
     output_file.close()
     
-    return mismatch_prob_dict
+    return results
 
 if __name__ == '__main__':
     main()

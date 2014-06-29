@@ -90,7 +90,7 @@ class multimapped_read_sorter():
     and the called base was the observed 1 of 3 possible other bases.
     '''
   
-    # lists that hold precomputed matched and mismatched base probabilities
+    # lists that hold precomputed matched and missed base probabilities
     # index into the list using the dec value of the ascii char, which is simply
     # the value in the qual string once it is represented as a byte array
      
@@ -116,7 +116,8 @@ class multimapped_read_sorter():
             # overwrite the old, approximate values with empirically determined ones
             for i in range(33,127):
                 if i in mismatch_prob_dict:
-                    self.log10_matched_base_prob[i] = math.log10(1.0 - mismatch_prob_dict[i])
+                    if mismatch_prob_dict[i] != 1:
+                        self.log10_matched_base_prob[i] = math.log10(1.0 - mismatch_prob_dict[i])
                     self.log10_mismatched_base_prob[i] = math.log10(mismatch_prob_dict[i] / 3)
     
             print ('phred\tmatch_prob\tmismatch_prob')
