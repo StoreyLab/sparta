@@ -65,14 +65,20 @@ def create_genome_seq(aligned):
             genome_seq[seq_ix] = curr_err
             seq_ix += 1
             
-    return genome_seq 
-    
+    return genome_seq
+
+def dd_generator():
+    return collections.defaultdict(int)
+
+def nested_dd_generator():
+    return collections.defaultdict(dd_generator)
+
 def create_mismatch_prob_dict_worker_procedure(samfile1, samfile2, interleave_ix, num_processes, genome1_name, genome2_name):
     
     sam1 = pysam.Samfile(samfile1)
     sam2 = pysam.Samfile(samfile2)
     
-    results = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
+    results = collections.defaultdict(nested_dd_generator)
     
     ix = 0
     for aligned1, aligned2 in zip(sam1, sam2):
@@ -81,8 +87,6 @@ def create_mismatch_prob_dict_worker_procedure(samfile1, samfile2, interleave_ix
             ix += 1
             continue
         ix += 1
-        if ix > 1000:
-            break
 
         assert aligned1.qname == aligned2.qname
         
@@ -108,6 +112,7 @@ def create_mismatch_prob_dict_worker_procedure(samfile1, samfile2, interleave_ix
                     pos2 = pos_dict2[i]
                     
                     results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1.seq[i]][qual[i]] += 1
+
     return results
 
 # merge a list of dicts into one.
@@ -115,9 +120,6 @@ def merge_dicts(dict_list):
     
     new_dict = dict_list.pop()
 
-    for dict in dict_list:
-        pprint(dict)
-    '''    
     # merge
     while(dict_list):
         old_dict = dict_list.pop()
@@ -127,12 +129,11 @@ def merge_dicts(dict_list):
             for nuc, qual_dict in nuc_to_qual_dict.iteritems():
 
                 for qual, num in qual_dict.iteritems():
+                    
                     new_dict[coordinate_pairs][nuc][qual] += num
                     
     return new_dict
-    '''
-    return {}
-
+    
 def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name): 
     # get the number of available CPUs
     # default to 1
@@ -157,7 +158,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
     for result in async_results:
         result.wait()
         unpacked_results.append(result.get())
-        
+
     results = merge_dicts(unpacked_results)
     
     quality_score_match_counter = collections.defaultdict(int)
