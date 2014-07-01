@@ -48,9 +48,10 @@ import math
 import pysam
 import re
 import sys
+import time
 
 # global variables
-estimate_error_prob = True
+estimate_error_prob = False
 
 # regex for the MD string that specifies errors from the reference.
 # more information about the MD string: page 7 of http://samtools.github.io/hts-specs/SAMv1.pdf
@@ -371,7 +372,8 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
 # main logic
 # call compare_mappings() on samfile1 and samfile2 from standard input 
 def main():
-    
+
+    t1 = time.time()
     # get command line args
     args = parseargs()
     samfile1 = args.samfile1
@@ -383,6 +385,9 @@ def main():
     # compare mappings between samfiles
     compare_mappings(samfile1, samfile2, genome1_name, genome2_name, verbose_file=verbose_file)
     
+    t2 = time.time()
+    print('TOTAL TIME: {}'.format(t2-t1))
+
     # close output files
     verbose_file.close()
 if __name__ == '__main__':
