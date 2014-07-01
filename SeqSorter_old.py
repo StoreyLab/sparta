@@ -43,7 +43,7 @@ python2 SeqSorter.py sample_data/S288C_bowtie_test/BY_bowtie_out.sam \
 '''
 
 import argparse
-import countErrorOccurences
+import estimateErrorFreq_old
 import math
 import pysam
 import re
@@ -211,7 +211,7 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
     else:
         verbose = False
     if estimate_error_prob:
-        mismatch_prob_dict = countErrorOccurences.count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, 'count_error_occurences_out')
+        mismatch_prob_dict = estimateErrorFreq_old.count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, 'count_error_occurences_out')
     else:
         mismatch_prob_dict = None
      
@@ -298,7 +298,7 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
                 unclassified += 1
                 if verbose:
                     log_verbose(num_err1, num_err2, prob_genome1, 'unclassified: under cutoff')
-
+            '''
             ##############################################################
             # Analysis of unequal deletions (maybe remove?)
             ##############################################################
@@ -350,7 +350,7 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
             ##############################################################
             # End analysis of unequal deletions 
             ##############################################################
-    
+            '''
     # print counts of each scenario    
     
     print('\n{}\tunmapped by bowtie to either {} or {}'.format(no_match, genome1_name, genome2_name))
@@ -361,13 +361,14 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
     print('   {}\tassigned to {} based on errors'.format(classified1, genome1_name))
     print('   {}\tassigned to {} based on errors'.format(classified2, genome2_name))
     print('   {}\tunmapped based on errors'.format(unclassified))
+'''    
     print
     print('{}\tcases of difference in number of deleted seqs'.format(diff_number_del_seqs))
     print('{}\tcases of difference in number of deleted bases'.format(diff_number_del_bases))
     print('   {}\twinners had more deleted seqs'.format(del_seqs_mattered))
     print('   {}\twinners had more deleted bases'.format(del_bases_mattered))
     print('   {}\tcases of the above 2 being different'.format(bases_seqs_unrel))
-
+'''
 
 # main logic
 # call compare_mappings() on samfile1 and samfile2 from standard input 

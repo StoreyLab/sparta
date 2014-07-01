@@ -44,7 +44,7 @@ python2 SeqSorter.py sample_data/S288C_bowtie_test/BY_bowtie_out.sam \
 
 import argparse
 import collections
-import countErrorOccurences
+import estimateErrorFreq
 import math
 import multiprocessing as mp
 import pysam
@@ -296,7 +296,7 @@ def main():
     
     if estimate_error_prob:
         # currently broken
-        mismatch_prob_dict = countErrorOccurences.count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, 'count_error_occurences_out')
+        mismatch_prob_dict = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name)
     else:
         mismatch_prob_dict = None    
     
