@@ -67,7 +67,7 @@ def create_genome_seq(aligned):
             
     return genome_seq 
     
-def count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, output_file):
+def count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name):
     
     sam1 = pysam.Samfile(samfile1)
     sam2 = pysam.Samfile(samfile2)
@@ -175,7 +175,7 @@ def main():
     output_file = args.output_file
     
     # compare mappings between samfiles
-    results = count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, output_file)
+    results = count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name)
     
     # close output files
     output_file.close()
