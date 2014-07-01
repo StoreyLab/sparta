@@ -102,7 +102,7 @@ def count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, outp
                     
                     results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1.seq[i]][qual[i]] += 1
     
-        quality_score_match_counter = collections.defaultdict(int)
+    quality_score_match_counter = collections.defaultdict(int)
     quality_score_mismatch_counter = collections.defaultdict(int)
     
     for coordinate_pairs, nuc_to_qual_dict in results.iteritems():
