@@ -21,6 +21,7 @@ from pprint import pprint
 import pysam
 import re
 import sys
+import time
 
 # regex for the MD string that specifies errors from the reference.
 # more information about the MD string: page 7 of http://samtools.github.io/hts-specs/SAMv1.pdf
@@ -223,7 +224,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
 # main logic
 # call compare_mappings() on samfile1 and samfile2 from standard input 
 def main():
-    
+    t1 = time.time()
     # get command line args
     args = parseargs()
     samfile1 = args.samfile1
@@ -239,6 +240,8 @@ def main():
     output_file.close()
     
     pprint(results)
+    t2 = time.time()
+    print('TOTAL TIME: {}'.format(t2-t1))
     return 0
 
 if __name__ == '__main__':
