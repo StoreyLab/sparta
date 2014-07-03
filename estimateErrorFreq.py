@@ -1,3 +1,4 @@
+#! /usr/bin/python
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
@@ -32,10 +33,9 @@ def parseargs():
     parser.add_argument('samfile1', nargs='?', type = str, help='path to samfile 1', default=sys.stdin)
     parser.add_argument('samfile2', nargs='?', type = str, help='path to samfile 2', default=sys.stdin)
     # optional nicknames for the genomes used in the two samfiles (recommended)    
-    parser.add_argument('-n1', '--name1', nargs='?', type = str, help='name for genome 1 (reference for samfile 1)', default=sys.stdin)
-    parser.add_argument('-n2', '--name2', nargs='?', type = str, help='name for genome 2 (reference for samfile 2)', default=sys.stdin)
+    parser.add_argument('-n1', '--name1', nargs='?', type = str, help='name for genome 1 (reference for samfile 1)', default='genome1')
+    parser.add_argument('-n2', '--name2', nargs='?', type = str, help='name for genome 2 (reference for samfile 2)', default='genome2')
     # this is an optional verbose outfile with useful values for statistical analysis
-    parser.add_argument('-v', '--output_file', nargs='?', type=argparse.FileType('w'), help='specify a filename for verbose output (useful for statistical analysis)', default=sys.stdin)    
 
     # default to help option. credit to unutbu: http://stackoverflow.com/questions/4042452/display-help-message-with-python-argparse-when-script-is-called-without-any-argu
     if len(sys.argv) < 2:
@@ -124,30 +124,31 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
                 base_count[nuc] += 1
         
         total_bases = sum([v for k,v in base_count.iteritems()])
-        cutoff = 0.75
+        cutoff = 0.5
         consensus = 'N'
 
-        # if more than 0.75 of reads agree on a base, and if the genomic sequence
-        # in that position is that same base, then it is the consensus.       
-        for base, count in base_count.iteritems():
-            if count > cutoff * total_bases and base == coordinate_pairs[4]:
-                consensus = base
+        if total_bases >= 8:
+            # if more than half of reads agree on a base, and if the genomic sequence
+            # in that position is that same base, then it is the consensus.       
+            for base, count in base_count.iteritems():
+                if count > cutoff * total_bases and base == coordinate_pairs[4]:
+                    consensus = base
                
-               
-        for nuc, qual_dict in nuc_to_qual_dict.iteritems():
-            # for a given coordinate pair, iterate through its nucleotides and
-            # the dictionary that pairs qualities to number of matches
-            # iterate through nucleotides and their quality dictionaries
-            for qual, num in qual_dict.iteritems():
-                # iterate over qualities and number of matches
-                
-                # AT THIS POINT we have:
-                # a coordinate pair, a nucleotide at that coordinate pair,
-                # a quality score, and the number of matches at that quality score
-                if nuc == consensus: 
-                    quality_score_match_counter[qual] += num
-                else:
-                    quality_score_mismatch_counter[qual] += num
+        if consensus != 'N':
+            for nuc, qual_dict in nuc_to_qual_dict.iteritems():
+                # for a given coordinate pair, iterate through its nucleotides and
+                # the dictionary that pairs qualities to number of matches
+                # iterate through nucleotides and their quality dictionaries
+                for qual, num in qual_dict.iteritems():
+                    # iterate over qualities and number of matches
+                    
+                    # AT THIS POINT we have:
+                    # a coordinate pair, a nucleotide at that coordinate pair,
+                    # a quality score, and the number of matches at that quality score
+                    if nuc == consensus: 
+                        quality_score_match_counter[qual] += num
+                    else:
+                        quality_score_mismatch_counter[qual] += num
                     
     mismatch_prob_dict = {}
     
@@ -170,13 +171,10 @@ def main():
     samfile2 = args.samfile2
     genome1_name = args.name1
     genome2_name = args.name2
-    output_file = args.output_file
     
     # compare mappings between samfiles
     results = create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name)
     
-    # close output files
-    output_file.close()
     t2 = time.time()
     pprint(results)
     print('TOTAL TIME: {}'.format(t2-t1))
