@@ -466,7 +466,7 @@ def main():
         
         # compare the results of calculated error probs vs. quality score derived error probs
         compare_counter = collections.defaultdict(int)        
-        for calc_result, qual_result in zip(combined_sorter, combined_sorter_qual_scores):
+        for calc_result, qual_result in zip(combined_sorter.sort_fates, combined_sorter_qual_scores.sort_fates):
             if (calc_result != qual_result):
                 compare_counter['different'] += 1
             else:
