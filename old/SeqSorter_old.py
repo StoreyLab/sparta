@@ -43,7 +43,7 @@ python2 SeqSorter.py sample_data/S288C_bowtie_test/BY_bowtie_out.sam \
 '''
 
 import argparse
-import estimateErrorFreq_old
+import estimateErrorFreq
 import math
 import pysam
 import re
@@ -211,7 +211,7 @@ def compare_mappings(samfile1, samfile2, genome1_name='genome1', genome2_name='g
     else:
         verbose = False
     if estimate_error_prob:
-        mismatch_prob_dict = estimateErrorFreq_old.count_error_occurrences(samfile1, samfile2, genome1_name, genome2_name, 'count_error_occurences_out')
+        mismatch_prob_dict = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, 'count_error_occurences_out')
     else:
         mismatch_prob_dict = None
      

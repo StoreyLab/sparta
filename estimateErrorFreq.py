@@ -16,7 +16,6 @@ actual observed scores at each phred score.
 import argparse
 import copy
 import collections
-import multiprocessing as mp
 from pprint import pprint
 import pysam
 import re
@@ -66,29 +65,19 @@ def create_genome_seq(aligned):
             genome_seq[seq_ix] = curr_err
             seq_ix += 1
             
-    return genome_seq
-
-def dd_generator():
-    return collections.defaultdict(int)
-
-def nested_dd_generator():
-    return collections.defaultdict(dd_generator)
-
-def create_mismatch_prob_dict_worker_procedure(samfile1, samfile2, interleave_ix, num_processes, genome1_name, genome2_name):
+    return genome_seq 
+    
+def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
     
     sam1 = pysam.Samfile(samfile1)
     sam2 = pysam.Samfile(samfile2)
     
-    results = collections.defaultdict(nested_dd_generator)
-    
+    results = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
     ix = 0
     for aligned1, aligned2 in zip(sam1, sam2):
-        
-        if (ix % num_processes != interleave_ix):
-            ix += 1
-            continue
-        ix += 1
-
+        ix +=1
+        if ix > 200:
+            break
         assert aligned1.qname == aligned2.qname
         
         if not aligned1.is_unmapped and not aligned2.is_unmapped:
@@ -113,54 +102,6 @@ def create_mismatch_prob_dict_worker_procedure(samfile1, samfile2, interleave_ix
                     pos2 = pos_dict2[i]
                     
                     results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1.seq[i]][qual[i]] += 1
-
-    return results
-
-# merge a list of dicts into one.
-def merge_dicts(dict_list):
-    
-    new_dict = dict_list.pop()
-
-    # merge
-    while(dict_list):
-        old_dict = dict_list.pop()
-        
-        for coordinate_pairs, nuc_to_qual_dict in old_dict.iteritems():
-            
-            for nuc, qual_dict in nuc_to_qual_dict.iteritems():
-
-                for qual, num in qual_dict.iteritems():
-                    
-                    new_dict[coordinate_pairs][nuc][qual] += num
-                    
-    return new_dict
-    
-def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name): 
-    # get the number of available CPUs
-    # default to 1
-    num_processes = 1
-    try:
-        num_processes = mp.cpu_count()
-    except:
-        pass
-    
-    worker_pool = mp.Pool(processes=num_processes)
-    
-    async_results = []    
-    
-    for interleave_ix in range(0, num_processes):
-        args = (samfile1, samfile2, interleave_ix, num_processes, genome1_name, genome2_name)
-        async_results.append(worker_pool.apply_async(create_mismatch_prob_dict_worker_procedure, args))
-        
-    worker_pool.close()
-    worker_pool.join()
-    
-    unpacked_results = []
-    for result in async_results:
-        result.wait()
-        unpacked_results.append(result.get())
-
-    results = merge_dicts(unpacked_results)
     
     quality_score_match_counter = collections.defaultdict(int)
     quality_score_mismatch_counter = collections.defaultdict(int)
@@ -216,11 +157,11 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
 
         mismatch_prob = mismatch_count * 1.0 / ((mismatch_count + quality_score_match_counter[qual])*1.0)
         mismatch_prob_dict[qual] = mismatch_prob
-                
+        
     pprint(mismatch_prob_dict)
     
     return mismatch_prob_dict
-    
+
 # main logic
 # call compare_mappings() on samfile1 and samfile2 from standard input 
 def main():
@@ -238,9 +179,8 @@ def main():
     
     # close output files
     output_file.close()
-    
-    pprint(results)
     t2 = time.time()
+    pprint(results)
     print('TOTAL TIME: {}'.format(t2-t1))
     return 0
 
