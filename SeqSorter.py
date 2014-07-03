@@ -65,7 +65,6 @@ python2 SeqSorter.py sample_data/S288C_bowtie_test/BY_bowtie_out.sam \
 
 import argparse
 import collections
-from copy import copy as copy
 import estimateErrorFreq
 import itertools
 import math
@@ -230,6 +229,32 @@ class multimapped_read_sorter():
         # sum the probabilities and exponentiate to convert back from log10 scale
         return pow(10, total)
 
+    # given two aligned read objects mapping the same read to different genomes,
+    # return the name of the most likely genome and probability of genome1
+    def untangle_two_mappings(self, aligned1, aligned2, genome1_name='genome1', genome2_name='genome2', genome1_prior=0.5, posterior_cutoff=0.9, verbose=False):
+        
+        genome2_prior = 1.0 - genome1_prior
+        
+        # probability of the read given that genome1 generated it
+        prob_read_genome1 = self.aligned_read_prob(aligned1)
+
+        # probabiltiy of the read given that genome2 generated it
+        prob_read_genome2 = self.aligned_read_prob(aligned2)
+
+        # apply baiyes rule: compute probability that each genome generated
+        # the read given our priors for genome1 and genome2
+        prob_genome1 = (prob_read_genome1 * genome1_prior /
+                        (prob_read_genome1 * genome1_prior + prob_read_genome2 * genome2_prior))
+                        
+        prob_genome2 = 1.0 - prob_genome1    
+
+        if (prob_genome1 >= posterior_cutoff):
+            return genome1_name, prob_genome1
+        elif (prob_genome2 >= posterior_cutoff):
+            return genome2_name, prob_genome1
+        else:
+            return "ambiguous", prob_genome1
+
     # UNTANGLE TWO SAMFILES
     # Given two samfile objects mapping the same RNAseq reads to different genomes,
     # sort each alignedread object to one genome or the other.
@@ -280,34 +305,15 @@ class multimapped_read_sorter():
                     num_err2 = len(re.findall(self.MD_REGEX, aligned2.opt("MD")))
                     self.log(num_err1, num_err2, '0.5', 'unclassified: same errors')
             else:
-                # bowtie matched the read to both genomes
-                # use errors and qual scores to classify read one way or the other
-                genome2_prior = 1.0 - genome1_prior
+            
+                most_likely_genome, prob_genome1 = self.untangle_two_mappings(aligned1, aligned2, genome1_name, genome2_name, genome1_prior, posterior_cutoff)
                 
-                # probability of the read given that genome1 generated it
-                prob_read_genome1 = self.aligned_read_prob(aligned1)
-            
-                # probabiltiy of the read given that genome2 generated it
-                prob_read_genome2 = self.aligned_read_prob(aligned2)
-            
-                # apply baiyes rule: compute probability that each genome generated
-                # the read given our priors for genome1 and genome2
-                prob_genome1 = (prob_read_genome1 * genome1_prior /
-                                (prob_read_genome1 * genome1_prior + prob_read_genome2 * genome2_prior))
-                                
-                prob_genome2 = 1.0 - prob_genome1    
                 num_err1 = len(re.findall(self.MD_REGEX, aligned1.opt("MD")))
                 num_err2 = len(re.findall(self.MD_REGEX, aligned2.opt("MD")))                
                     
-                if (prob_genome1 >= posterior_cutoff):
-                    self.category_counter['classified1'] += 1
-                    self.log(num_err1, num_err2, prob_genome1, 'classified {}'.format(genome1_name))
-                elif (prob_genome2 >= posterior_cutoff):
-                    self.category_counter['classified2'] += 1
-                    self.log(num_err1, num_err2, prob_genome1, 'classified {}'.format(genome2_name))
-                else:
-                    self.category_counter['unclassified'] += 1
-                    self.log(num_err1, num_err2, prob_genome1, 'unclassified: under cutoff')
+                self.log(num_err1, num_err2, prob_genome1, 'classified {}'.format(most_likely_genome))
+                self.category_counter[most_likely_genome] += 1
+                
 
 # WORKER PROCEDURE
 # The procedure called by different processes using apply_async.
@@ -403,9 +409,9 @@ def main():
     print('{}\tmapped by bowtie to both {} or {}, but errors are same'.format(category_counter['same_errors'], genome1_name, genome2_name))
     total_mapped_to_both = category_counter['classified1'] + category_counter['classified2'] + category_counter['unclassified']
     print('{}\tmapped by bowtie to both {} and {}:'.format(total_mapped_to_both, genome1_name, genome2_name))
-    print('   {}\tassigned to {} based on errors'.format(category_counter['classified1'], genome1_name))
-    print('   {}\tassigned to {} based on errors'.format(category_counter['classified2'], genome2_name))
-    print('   {}\tunmapped based on errors'.format(category_counter['unclassified']))
+    print('   {}\tassigned to {} based on errors'.format(category_counter[genome1_name], genome1_name))
+    print('   {}\tassigned to {} based on errors'.format(category_counter[genome2_name], genome2_name))
+    print('   {}\tunmapped based on errors'.format(category_counter['ambiguous']))
     
     # Print the total time
     t2 = time.time()

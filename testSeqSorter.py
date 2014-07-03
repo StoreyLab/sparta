@@ -149,7 +149,7 @@ class test_untangle(unittest.TestCase):
         read1 = read_gen('AAAAAAAAAA','FFFFFFFFFF','10')
         read2 = read_gen('AAAAAAAAAA','FFFFFFFFFF','10')
         result, NIL = self.sorter.untangle_two_mappings(read1, read2)
-        self.assertTrue(result == 'unmapped')
+        self.assertTrue(result == 'ambiguous')
     
     # if read1 has one error then the result should be genome2
     def test_untangle_one_error(self):
@@ -196,7 +196,7 @@ class test_untangle(unittest.TestCase):
         read1 = read_gen('AAGCAAAAAA','FFBBFFFFFF','2A0A6')
         read2 = read_gen('AAAAAACTAA','FFBBFFFFFF','6A0A2')
         result, NIL = self.sorter.untangle_two_mappings(read1, read2)
-        self.assertTrue(result == 'unmapped')
+        self.assertTrue(result == 'ambiguous')
         
     # if both reads have the same number of errors and genome1's errors only have
     # a slight dip in quality then the by severely loosening the posterior

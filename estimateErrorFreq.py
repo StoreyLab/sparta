@@ -73,11 +73,9 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
     sam2 = pysam.Samfile(samfile2)
     
     results = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
-    ix = 0
+
     for aligned1, aligned2 in zip(sam1, sam2):
-        ix +=1
-        if ix > 200:
-            break
+        
         assert aligned1.qname == aligned2.qname
         
         if not aligned1.is_unmapped and not aligned2.is_unmapped:
