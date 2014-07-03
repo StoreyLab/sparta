@@ -124,11 +124,11 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
                 base_count[nuc] += 1
         
         total_bases = sum([v for k,v in base_count.iteritems()])
-        cutoff = 0.5
+        cutoff = 0.75
         consensus = 'N'
 
-        if total_bases >= 8:
-            # if more than half of reads agree on a base, and if the genomic sequence
+        if total_bases >= 20:
+            # if more than 75% of reads agree on a base, and if the genomic sequence
             # in that position is that same base, then it is the consensus.       
             for base, count in base_count.iteritems():
                 if count > cutoff * total_bases and base == coordinate_pairs[4]:
