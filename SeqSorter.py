@@ -160,33 +160,45 @@ class multimapped_read_sorter():
         # if mismatch probabilities have been computed empirically, use those
         # to overwrite the defaults
         if mismatch_prob_dict:
-            
-            # overwrite the old, approximate values with empirically determined ones
-            for i in range(33,127):
-                if i in mismatch_prob_dict:
-                    if mismatch_prob_dict[i] != 1:
-                        self.log10_matched_base_prob[i] = math.log10(1.0 - mismatch_prob_dict[i])
-                    self.log10_mismatched_base_prob[i] = math.log10(mismatch_prob_dict[i] / 3)
-            
-            if interleave_ix == 0:
-                fig, ax = plt.subplots()
-                
-                expected_phred = [-10*math.log10(math.pow(10,i)*3) for i in self.log10_mismatched_base_prob[33:83]]
-                actual_phred = range(1, 51)
-                
-                ax.scatter(actual_phred, expected_phred)
-                # add an x=y line
-                ax.plot(actual_phred, actual_phred, 'r')
-                ax.set_xlabel('Quality Score', fontsize=20)
-                ax.set_ylabel('-10*log10(Prob of Mismatch)', fontsize=20)
-                ax.set_title('Quality Score vs. Calculated Probability of Mismatch')
-                ax.grid(True)
-                ax.set_xlim(-1, 51)
-                ax.set_ylim(-1, 51)
-                
-                fig.tight_layout()
-    
-                plt.savefig(os.path.join(self.output_dir, 'qual_scores_vs_actual_mismatch.png'), format='png')
+            with open(os.path.join(self.output_dir, 'mismatch_probs_info.txt'), 'w') as outputfile:
+                print('mismatch_prob_dict', file=outputfile)
+                print(mismatch_prob_dict, file=outputfile)
+                print('\n',file=outputfile)
+                # overwrite the old, approximate values with empirically determined ones
+                for i in range(33,127):
+                    if i in mismatch_prob_dict:
+                        if mismatch_prob_dict[i] != 1:
+                            self.log10_matched_base_prob[i] = math.log10(1.0 - mismatch_prob_dict[i])
+                        self.log10_mismatched_base_prob[i] = math.log10(mismatch_prob_dict[i] / 3)
+
+                if interleave_ix == 0:
+                    fig, ax = plt.subplots()
+                    
+                    measured_phred = [-10*math.log10(math.pow(10,i)*3) for i in self.log10_mismatched_base_prob[33:83]]
+                    qual_score_phred = range(1, 51)
+                    
+                    print('measured_phred', file=outputfile)
+                    print(measured_phred, file=outputfile)
+                    print('\n',file=outputfile)                    
+                    
+                    print('qual_score_phred', file=outputfile)
+                    print(measured_phred, file=outputfile)
+                    print('\n',file=outputfile) 
+
+                    print(os.path.join)
+                    ax.scatter(qual_score_phred, measured_phred)
+                    # add an x=y line
+                    ax.plot(qual_score_phred, qual_score_phred, 'r')
+                    ax.set_xlabel('Quality Score', fontsize=20)
+                    ax.set_ylabel('-10*log10(Prob of Mismatch)', fontsize=20)
+                    ax.set_title('Quality Score vs. Calculated Probability of Mismatch')
+                    ax.grid(True)
+                    ax.set_xlim(-1, 51)
+                    ax.set_ylim(-1, 51)
+                    
+                    fig.tight_layout()
+        
+                    plt.savefig(os.path.join(self.output_dir, 'qual_scores_vs_actual_mismatch.png'), format='png')
             
     # LOG
     # save strings that will later be written to the verbose output file        
