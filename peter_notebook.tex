@@ -58,7 +58,13 @@ Pr(read \textbar\ RM) is calculated in the same fashion. Pr(BY \textbar\ read) i
 
 SortSeq computes the probability of BY and probability of RM for reads that bowtie maps to both. 
 
-\section*{June 23, 2014}
-Today David outlined for me a way to add a layer of sophistication for SortSeq, at least for our current experiment: handling the problem of read quality scores being an inaccurate representation of the probability of a mismatch. I will start by accumulating information about the proportion of bases for a given quality score in the RNAseq reads that are likely to be mismatches, and then "correcting" the values associated with various quality scores.
+\section*{June 23-27, 2014}
+This week David outlined for me a way to add a layer of sophistication for SortSeq, at least for our current experiment: handling the problem of read quality scores being an inaccurate representation of the probability of a mismatch. I will start by accumulating information about the proportion of bases for a given quality score in the RNAseq reads that are likely to be mismatches, and then "correcting" the values associated with various quality scores.\\
 
+The code for this analysis is in the file SeqSorter/estimateErrorFreq.py, and it walks through pairs of aligned\_reads (RNA read aligned to BY, and same RNA read aligned to RM) in the two mappings, and builds a nested dictionary of this structure:
+\begin{verbatim}
+result[(BY chromosome, RM chromosome, BY position, RM position, consensus base)]
+[RNA base][quality score] = count
+\end{verbatim}
+That is, for reads that map to both chromosomes, if both genomes have the same base in that position, then we keep track of the specific spots the base mapped to in both BY and RM, what the base was in the RNA read, and what its quality score was. From this information, we build a set of 'likely consensus mappings' situations where both genomes agree on a base, and most aligned RNA bases agree on the base. Then, any base that disagrees with this likely consensus can be defined as random error. Then, we can tally the total amount of random errors that were associated with a base of a given quality, and therefore compute the likelihood of error from a given quality score empirically.
 \end{document}
