@@ -159,28 +159,6 @@ class multimapped_read_sorter():
             self.log10_matched_base_prob[i] = math.log10(1.0 - math.pow(10, (i - 33) * -0.1))
             self.log10_mismatched_base_prob[i] = ((i - 33) * -0.1) - 0.47712125471966244 # log10(3) == 0.47712125471966244
 
-##########################################################
-        
-        fig, ax = plt.subplots()
-        
-        measured_phred = [-10*math.log10(math.pow(10,i)*3) for i in self.log10_mismatched_base_prob[33:83]]
-        qual_score_phred = range(1, 51)
-
-        ax.scatter(qual_score_phred, measured_phred)
-        # add an x=y line
-        ax.plot(qual_score_phred, qual_score_phred, 'r')
-        ax.set_xlabel('Quality Score', fontsize=20)
-        ax.set_ylabel('-10*log10(Prob of Mismatch)', fontsize=20)
-        ax.set_title('Quality Score vs. Calculated Probability of Mismatch')
-        ax.grid(True)
-        ax.set_xlim(-1, 51)
-        ax.set_ylim(-1, 51)
-        
-        fig.tight_layout()
-
-        plt.savefig('test.png', format='png')
-
-##########################################################
         # if mismatch probabilities have been computed empirically, use those
         # to overwrite the defaults
         if mismatch_prob_dict:
