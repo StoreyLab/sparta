@@ -174,7 +174,6 @@ class multimapped_read_sorter():
                         self.log10_mismatched_base_prob[i] = math.log10(mismatch_prob_dict[i] / 3)
 
                 if interleave_ix == 0:
-                    fig, ax = plt.subplots()
                     
                     measured_phred = [-10*math.log10(math.pow(10,i)*3) for i in self.log10_mismatched_base_prob[33:83]]
                     qual_score_phred = range(1, 51)
@@ -187,20 +186,24 @@ class multimapped_read_sorter():
                     print(measured_phred, file=outputfile)
                     print('\n',file=outputfile) 
 
-                    ax.scatter(qual_score_phred, measured_phred)
-                    # add an x=y line
-                    ax.plot(qual_score_phred, qual_score_phred, 'r')
-                    ax.set_xlabel('Quality Score', fontsize=20)
-                    ax.set_ylabel('-10*log10(Prob of Mismatch)', fontsize=20)
-                    ax.set_title('Quality Score vs. Calculated Probability of Mismatch')
-                    ax.grid(True)
-                    ax.set_xlim(-1, 51)
-                    ax.set_ylim(-1, 51)
+                    try:                    
+                        fig, ax = plt.subplots()                    
+                        ax.scatter(qual_score_phred, measured_phred)
+                        # add an x=y line
+                        ax.plot(qual_score_phred, qual_score_phred, 'r')
+                        ax.set_xlabel('Quality Score', fontsize=20)
+                        ax.set_ylabel('-10*log10(Prob of Mismatch)', fontsize=20)
+                        ax.set_title('Quality Score vs. Calculated Probability of Mismatch')
+                        ax.grid(True)
+                        ax.set_xlim(-1, 51)
+                        ax.set_ylim(-1, 51)
                     
-                    fig.tight_layout()
+                        fig.tight_layout()
         
-                    plt.savefig(os.path.join(self.output_dir, 'qual_scores_vs_actual_mismatch.png'), format='png')
-            
+                        plt.savefig(os.path.join(self.output_dir, 'qual_scores_vs_actual_mismatch.png'), format='png')
+                    except:
+                        pass            
+
     # LOG
     # save strings that will later be written to the verbose output file        
     def log(self, err1, err2, prob1, category, sort_fate):
