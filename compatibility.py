@@ -4,6 +4,7 @@ Created on Mon Jul  7 12:28:01 2014
 
 @author: peter
 """
+from __future__ import print_function
 import collections
 # Python 3 compatibility
 # in Python 3 itertools.izip does not exist because the basic zip returns an iterator

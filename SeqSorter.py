@@ -1,7 +1,7 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
-from __future__ import print_function
 
+from __future__ import print_function
 '''
 Created on Mon Jun 16 10:56:22 2014
 
