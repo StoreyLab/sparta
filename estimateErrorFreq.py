@@ -152,15 +152,17 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
                         quality_score_mismatch_counter[qual] += num
                     
     mismatch_prob_dict = {}
+    total_values_dict = {}
     
     for qual, mismatch_count in quality_score_mismatch_counter.items():
 
         mismatch_prob = mismatch_count * 1.0 / ((mismatch_count + quality_score_match_counter[qual])*1.0)
         mismatch_prob_dict[qual] = mismatch_prob
+        total_values_dict[qual] = mismatch_count + quality_score_match_counter[qual]
         
-    pprint(mismatch_prob_dict)
+    #pprint(mismatch_prob_dict)
     
-    return mismatch_prob_dict
+    return mismatch_prob_dict, total_values_dict
 
 # main logic
 # call compare_mappings() on samfile1 and samfile2 from standard input 

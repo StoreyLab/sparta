@@ -178,14 +178,14 @@ class multimapped_read_sorter():
                 if interleave_ix == 0:
                     
                     measured_phred = [-10*math.log10(math.pow(10,i)*3) for i in self.log10_mismatched_base_prob[33:83]]
-                    qual_score_phred = range(1, 51)
+                    qual_score_phred = range(0, 50)
                     
                     print('measured_phred', file=outputfile)
                     print(measured_phred, file=outputfile)
                     print('\n',file=outputfile)                    
                     
                     print('qual_score_phred', file=outputfile)
-                    print(measured_phred, file=outputfile)
+                    print(qual_score_phred, file=outputfile)
                     print('\n',file=outputfile) 
 
                     try:                    
@@ -429,13 +429,16 @@ def main():
     # If estimate_error_prob is True, then calculate actual probabilities of
     # random mismatch for each phred score.
     if estimate_error_prob:
-        mismatch_prob_dict = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name)
+        mismatch_prob_dict, total_values_dict = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name)
+        with open(os.path.join(output_dir, 'mismatch_probs_info.txt'), 'w') as outputfile:
+            print('Total_values_dict', file=outputfile)
+            print(total_values_dict, file=outputfile)
     else:
-        mismatch_prob_dict = None    
-    
+        mismatch_prob_dict = None
+
     # Create a pool of worker processes to do the sorting
     worker_pool = mp.Pool(processes=num_processes)
-    async_results = []    
+    async_results = []
     
     # Create a set of interleave indices, to allow each process to only work on
     # one alignment every x alignments, where x is the number of processes running    
