@@ -16,13 +16,14 @@ actual observed scores at each phred score.
 
 import argparse
 import copy
-import collections
+from compatibility import compatibility_dict
+from compatibility import izip
 from pprint import pprint
 import pysam
 import re
 import sys
 import time
-
+            
 # regex for the MD string that specifies errors from the reference.
 # more information about the MD string: page 7 of http://samtools.github.io/hts-specs/SAMv1.pdf
 MD_REGEX = re.compile("([0-9]+)([A-Z]|\^[A-Z]+)")
@@ -72,9 +73,9 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
     sam1 = pysam.Samfile(samfile1)
     sam2 = pysam.Samfile(samfile2)
     
-    results = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
+    results = compatibility_dict(lambda: compatibility_dict(lambda: compatibility_dict(int)))
 
-    for aligned1, aligned2 in zip(sam1, sam2):
+    for aligned1, aligned2 in izip(sam1, sam2):
         
         assert aligned1.qname == aligned2.qname
         
@@ -101,21 +102,21 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
                     
                     results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1.seq[i]][qual[i]] += 1
     
-    quality_score_match_counter = collections.defaultdict(int)
-    quality_score_mismatch_counter = collections.defaultdict(int)
+    quality_score_match_counter = compatibility_dict(int)
+    quality_score_mismatch_counter = compatibility_dict(int)
     
-    for coordinate_pairs, nuc_to_qual_dict in results.iteritems():
+    for coordinate_pairs, nuc_to_qual_dict in results.items():
         # iterate through genome coordinate pairs and their nested dictionaries
         
         # want to know: what is the consensus base at this coord pair?
         # keep a count of how many bases seen at this coord pair
-        base_count = collections.defaultdict(int)
+        base_count = compatibility_dict(int)
         
-        for nuc, qual_dict in nuc_to_qual_dict.iteritems():
+        for nuc, qual_dict in nuc_to_qual_dict.items():
             # for a given coordinate pair, iterate through its nucleotides and
             # the dictionary that pairs qualities to number of matches
             # iterate through nucleotides and their quality dictionaries
-            for qual, num in qual_dict.iteritems():
+            for qual, num in qual_dict.items():
                 # iterate over qualities and number of matches
                 
                 # AT THIS POINT we have:
@@ -123,23 +124,23 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
                 # a quality score, and the number of matches at that quality score
                 base_count[nuc] += 1
         
-        total_bases = sum([v for k,v in base_count.iteritems()])
+        total_bases = sum([v for k,v in base_count.items()])
         cutoff = 0.75
         consensus = 'N'
 
         if total_bases >= 20:
             # if more than 75% of reads agree on a base, and if the genomic sequence
             # in that position is that same base, then it is the consensus.       
-            for base, count in base_count.iteritems():
+            for base, count in base_count.items():
                 if count > cutoff * total_bases and base == coordinate_pairs[4]:
                     consensus = base
                
         if consensus != 'N':
-            for nuc, qual_dict in nuc_to_qual_dict.iteritems():
+            for nuc, qual_dict in nuc_to_qual_dict.items():
                 # for a given coordinate pair, iterate through its nucleotides and
                 # the dictionary that pairs qualities to number of matches
                 # iterate through nucleotides and their quality dictionaries
-                for qual, num in qual_dict.iteritems():
+                for qual, num in qual_dict.items():
                     # iterate over qualities and number of matches
                     
                     # AT THIS POINT we have:
@@ -152,7 +153,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
                     
     mismatch_prob_dict = {}
     
-    for qual, mismatch_count in quality_score_mismatch_counter.iteritems():
+    for qual, mismatch_count in quality_score_mismatch_counter.items():
 
         mismatch_prob = mismatch_count * 1.0 / ((mismatch_count + quality_score_match_counter[qual])*1.0)
         mismatch_prob_dict[qual] = mismatch_prob

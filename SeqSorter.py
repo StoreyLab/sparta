@@ -64,6 +64,8 @@ python2 SeqSorter.py sample_data/S288C_bowtie_test/BY_bowtie_out.sam \
 
 import argparse
 import collections
+from compatibility import compatibility_dict
+from compatibility import izip
 from copy import copy
 import estimateErrorFreq
 import itertools
@@ -138,7 +140,7 @@ class multimapped_read_sorter():
         self.genome2_name = genome2_name
         self.genome1_prior = genome1_prior
         self.posterior_cutoff = posterior_cutoff
-        self.category_counter = collections.defaultdict(int)
+        self.category_counter = compatibility_dict(int)
         self.sort_fates = []
         self.logs = []
         self.interleave_ix = 0
@@ -288,7 +290,7 @@ class multimapped_read_sorter():
         sam2 = pysam.Samfile(self.samfile2)
         
         ix = 0
-        for aligned1, aligned2 in itertools.izip(sam1, sam2):
+        for aligned1, aligned2 in izip(sam1, sam2):
             
             if (ix % num_processes != interleave_ix):
                 ix += 1
@@ -347,7 +349,7 @@ class multimapped_read_sorter():
         new_sam1 = pysam.Samfile(new_sam1_path, 'wh', template=sam1)
         new_sam2 = pysam.Samfile(new_sam2_path, 'wh', template=sam2)
         
-        for aligned1, aligned2, sort_fate in itertools.izip(sam1, sam2, self.sort_fates):
+        for aligned1, aligned2, sort_fate in izip(sam1, sam2, self.sort_fates):
             
             if sort_fate == 1:
                 # the current RNAseq read was classified as genome1
@@ -391,13 +393,13 @@ def merge_sorters(sorter_list):
         log_iters.append(iter(old_sorter.logs))
         sort_fate_iters.append(iter(old_sorter.sort_fates))
         
-        for category, count in old_sorter.category_counter.iteritems():
+        for category, count in old_sorter.category_counter.items():
             new_sorter.category_counter[category] += count
     
     # create the combined logs and sort fate list by cycling through the individual
     # ones and repeatedly taking the first thing off
-    new_sorter.logs = list(it.next() for it in itertools.cycle(log_iters))
-    new_sorter.sort_fates = list(it.next() for it in itertools.cycle(sort_fate_iters))    
+    new_sorter.logs = list(next(it) for it in itertools.cycle(log_iters))
+    new_sorter.sort_fates = list(next(it) for it in itertools.cycle(sort_fate_iters))    
     return new_sorter
 
 # MAIN FUNCTION
@@ -525,7 +527,7 @@ def main():
     
     verbose_filepath = os.path.join(output_dir, 'supplementary_output.txt')
     # print all the logs to the verbose output file
-    verbose_file = file(verbose_filepath, 'w')
+    verbose_file = open(verbose_filepath, 'w')
     print('err {}\terr {}\tprob {}\tcategory'.format(genome1_name, genome2_name, genome1_name), file=verbose_file)
     for line in combined_sorter.logs:
         print(line,file=verbose_file)
