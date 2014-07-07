@@ -430,7 +430,7 @@ def main():
     # random mismatch for each phred score.
     if estimate_error_prob:
         mismatch_prob_dict, total_values_dict = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name)
-        with open(os.path.join(output_dir, 'mismatch_probs_info.txt'), 'w') as outputfile:
+        with open(os.path.join(output_dir, 'total_values_dict.txt'), 'w') as outputfile:
             print('Total_values_dict', file=outputfile)
             print(total_values_dict, file=outputfile)
     else:
