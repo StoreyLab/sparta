@@ -20,7 +20,10 @@ if not os.path.exists('all_sample_analysis/out'):
     
 if not os.path.exists('all_sample_analysis/err'):
     os.makedirs('all_sample_analysis/err')
-    
+
+if not os.path.exists('all_sample_analysis/count'):
+    os.makedirs('all_sample_analysis/count')
+
 input_files = os.listdir('/Genomics/grid/users/emilysn/ase/analysis/RNA-Seq/RUN_111213OB/split_fastq')
 
 for fastq in input_files:

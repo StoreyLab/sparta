@@ -78,6 +78,27 @@ Pr(mismatch) = 10^(Q/-10) + U
 \noindent
 2. extend SeqSorter to use HTSeq to characterize the number of reads that map to different genes
 \\
+\smallskip
+\\
+\noindent
+I ran Bowtie | Seqsort on all of the RNAseq fastq files in the
+\begin{verbatim}
+/Genomics/grid/users/emilysn/ase/analysis/RNA-Seq/RUN_111213OB/split_fastq
+\end{verbatim}
+HTSeq-count (quantify number of BY-sorted vs RM-sorted reads in each gene)\newline
+the following commands were run in the /grid/users/pedge/SeqSorter/all\_sample\_analysis directory:
+\begin{verbatim}
+for i in $(ls split_by_genotypes/*_BY_sorted.sam); do qsub -cwd -o count_out/
+$(basename $i).out -e count_out/$(basename $i).err htseq-count -i ID -s no
+-t gene $i ../sample_data/S288C_reference_genome_R64-1-1_20110203/
+cropped_saccharomyces_cerevisiae_R64-1-1_20110208.gff; done;
+
+for i in $(ls split_by_genotypes/*_RM_sorted.sam); do qsub -cwd -o count_out/
+$(basename $i).out -e count_out/$(basename $i).err htseq-count -i ID -s no
+-t gene $i ../sample_data/RM11_1A/assembly/genome.gff; done;
+\end{verbatim}
+\noindent
+In other words, for all reads sorted by SeqSort to BY, run htseq count with the BY GFF file to assign them to genes. Do the same for RM.
 \noindent
 \pagebreak
 \subsection*{Results of Bowtie \textbar \ SeqSort on E1a12.fastq}
@@ -131,6 +152,9 @@ TOTAL TIME: 3209.26929116
 \caption{Best fit line for results of estimateErrorProbs.py on G1a60 data. R\textsuperscript{2}=0.852710185136.}
 \label{fig:g1a60}
 \end{figure}
+
+
+
 \pagebreak
 \section*{Miscellaneous Remarks:}
 \subsection*{Python Multiprocessing}
