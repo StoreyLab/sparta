@@ -375,23 +375,23 @@ def convert_fasta(infile, outfile):
 def convert_fastaRM(infile, outfile):
     """
     convert default fasta file to the appropriate format, named by chromosome
-	drop scplasm and chrm
+    drop scplasm and chrm
     """
     ignore=False
     with open(infile) as inf:
         with open(outfile, "w") as outf:
             for l in inf:
                 if l.startswith(">"):
-		    if "scplasm" in l or "m" in l:
-			ignore=True
+            if "scplasm" in l or "m" in l:
+            ignore=True
                     else:
-			ignore=False
-			num = int(l[len(l)-3:])
-			l = ">chr"+str(num)+"\n"
+            ignore=False
+            num = int(l[len(l)-3:])
+            l = ">chr"+str(num)+"\n"
                         #l = ">chr%s\n" % re.search("chromosome=(.*?)\]",
                                                 #l).groups()[0]
-		if(not ignore):               
-		    outf.write(l)
+        if(not ignore):               
+            outf.write(l)
 
 @follows(wget_genome)
 @files(GENOME_GFF_ORIGINAL, "S288C.gff")
@@ -411,7 +411,7 @@ def remove_fasta_gff(infile, outfile):
 @follows(convert_fasta)
 @files(os.path.join("bowtie_index", "S288C.fsa"),
          os.path.join("bowtie_index", "S288C.1.bt2"),
-	 os.path.join("bowtie_index", "RM11.fsa"),
+     os.path.join("bowtie_index", "RM11.fsa"),
          os.path.join("bowtie_index", "RM11.1.bt2"))
 def build_bowtie(infile_by, outfile_by, infile_rm, outfile_rm):
     out_base_by = outfile_by.split(".1.bt2")[0]
@@ -556,187 +556,13 @@ def map_readsRM(infile, outfile, base):
 
 @follows(map_reads, map_readsRM, mkdir("comparisons"))
 @collate(["mapped/*", "mappedRM/*"], regex("mapped.*\/(.*).bam"),
-	 r"comparisons/\1.txt")
-def compare_mappings(infiles, outfile):
-	byfile, rmfile = infiles
-	import pysam
-	import itertools
-	import collections
-	name = byfile.split(".")[0]
-	print name
-	snpname=name+".snps"
-	bysam = pysam.Samfile(byfile)
-	rmsam = pysam.Samfile(rmfile)
-	nummap = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
-	commonmap = collections.defaultdict((collections.Counter))
-
-	def getrelpos(spl):
-		total = 0
-		rel_pos = []
-		for n, b in spl:
-			total+=int(n)
-			rel_pos.append((total, b))
-			if not b.startswith("^"):
-				total+=1
-		return rel_pos
-
-	match1 = 0
-	nomatch = 0
-	matchboth = 0	
-	ident_errors = 0
-	weirdness = 0
-	both_snps = 0
-	difflen = 0
-	diffbase = 0
-	total = 0
-	suspects = 0
-
-	MD_REGEX = re.compile("([0-9]+)([A-Z]|\^[A-Z]+)")
-
-	for total, (byread, rmread) in enumerate(itertools.izip(bysam, rmsam)):
-		assert byread.qname == rmread.qname
-		total+=1
-		#print byread.is_unmapped, rmread.is_unmapped
-		if byread.is_unmapped and rmread.is_unmapped:
-			#this read is probably junk
-			nomatch+=1
-			continue
-		elif byread.is_unmapped != rmread.is_unmapped:
-			#maps to one but not the other; either junk or
-			#an unshared gene bw BY and RM
-			match1+=1
-			continue
-		else:
-			#maps to both; these are actually interesting
-			matchboth+=1
-			#pull out chromosome numbers and positions
-			chrby = bysam.getrname(byread.rname)
-			chrrm = rmsam.getrname(rmread.rname)
-			posby = byread.pos
-			posrm = rmread.pos
-			#put chr/pos in dictionary
-			#nummap[(chrby, chrrm)] = nummap[(chrby, chrrm)](posby, posrm)
-			#get errors
-			errby = byread.opt("MD")
-			errrm = rmread.opt("MD")
-
-			#get quality score
-			qual = byread.qual # will be the same for both
-
-			splby = re.findall(MD_REGEX, errby)
-			splrm = re.findall(MD_REGEX, errrm)
-
-			#if the errors are the same I dont care--not a SNP!
-			if errby==errrm:
-				ident_errors+=1
-				commonmap[(chrby, posby)][(chrrm, posrm)] += 1
-				continue
-
-			if len(byread.positions)!=len(rmread.positions):
-				if (len(splby)==0 and len(splrm)==0):
-					ident_errors+=1
-					commonmap[(chrby, posby)][(chrrm, posrm)] += 1
-				else:
-					difflen+=1
-				continue
-
-			rel_BY = getrelpos(splby)
-			rel_RM = getrelpos(splrm)
-
-			#print "ORIGINAL ERROR CODE: "+str(errby), str(errrm)
-			#print "RELATIVE POS: "+str(rel_BY), str(rel_RM)
-
-			inboth = set(n for n, b in rel_BY).intersection(n for n, b in rel_RM)
-
-			full_BY = [(byread.positions[n], rmread.positions[n], ord(qual[n]), b) for n, b in rel_BY if not n in inboth]
-			full_RM = [(byread.positions[n], rmread.positions[n], ord(qual[n]), b) for n, b in rel_RM if not n in inboth]
-
-			#print "UNIQUE FULL POSITIONS: "+str(full_BY), str(full_RM)
-
-			errorsby = len(full_BY)
-			errorsrm = len(full_RM)
-
-			if not (errorsby==0 or errorsrm==0): #read has both BY and RM SNPs
-				both_snps+=1
-				continue
-
-			if (full_BY==[] and full_RM==[]): #this is the case where both reads differ at the same position, by a different base
-				diffbase+=1
-				continue
-
-			#dont double count SNPs! one SNP per read should be counted
-			#just take the first one
-
-			if(errorsby==0): #SNPs map to RM
-				full_RM =  [full_RM[0]]
-			if(errorsrm==0):
-				full_BY = [full_BY[0]]
-
-			for posby, posrm, q, b in full_BY:
-				suspects+=1
-				nummap[(chrby, posby)][(chrrm, posrm)][(q, b, "RM")] += 1
-			for posby, posrm, q, b in full_RM:
-				suspects+=1
-				nummap[(chrby, posby)][(chrrm, posrm)][(q, b, "BY")] += 1
-
-			#stick in dict
-			#if this chr combination is not in nummap yet:			
-			#if (chrby, posby) in nummap and (chrrm, posrm) in nummap[(chrby, posby)]:
-			#	nummap[(chrby, posby)][(chrrm, posrm)].append((full_BY, full_RM)) 
-			#chr in but not positions
-			#elif (chrby, posby) in nummap and not (chrrm, posrm) in nummap[(chrby, posby)]:
-			#	nummap[(chrby, posby)][(chrrm, posrm)] = [(full_BY, full_RM)]
-			#if one or both is missing:
-			#else:
-			#	nummap[(chrby, posby)] = {(chrrm, posrm) : [(full_BY, full_RM)]}
-
-
-
-	print "Read match only 1 genome: "+str(float(match1) / total)
-	print "No match in either genome: "+str(float(nomatch) / total)
-	print "Matched both genomes: "+str(float(matchboth) / total)
-	print "Read matched both, seq error identical (no SNP): "+str(float(ident_errors)/total)
-	print "Read has SNPs that appear to be from both BY and RM: "+str(float(both_snps)/total)
-	#print "Total: "+str(total)
-	#print "Different base: "+str(diffbase)
-	#print "Different length reads: "+str(difflen)
-
-	#print commonmap
-
-	outfile = open(snpname, 'w')
-	header = "CHRBY\tPOSBY\tCHRRM\tPOSRM\tMATCH\tBASE\tQUAL\tFREQ\n"
-	outfile.write(header)
-	bykeys = nummap.keys()
-	for k in bykeys:
-		rmkeys = nummap[k].keys()
-		#print k
-		for j in rmkeys:
-			#print j
-			for i in nummap[k][j]:
-				#print k, j, i
-				s = str(k[0])+"\t"+str(k[1])+"\t"+str(j[0])+"\t"
-				s+= str(j[1])+"\t"+str(i[2])+"\t"+str(i[1])+"\t"+str(i[0])+"\t"
-				s+=str(nummap[k][j][i]) + "\n"
-				#print s
-				outfile.write(s)  
-
-	commonname = name+".common"	
-	outfile = open(commonname, 'w')
-	header = "CHRBY\tPOSBY\tCHRRM\tPOSRM\tFREQ\n"
-	outfile.write(header)
-	bykeys = commonmap.keys()
-	for k in bykeys:
-		rmkeys = commonmap[k].keys()
-		#print k
-		for j in rmkeys:
-			s=str(k[0])+"\t"+str(k[1])+"\t"
-			s+=str(j[0])+"\t"+str(j[1])+"\t"
-			s+=str(commonmap[k][j])+"\n"
-			outfile.write(s)
-  
-				
-
-
+     r"comparisons/\1.txt")
+def compare_mappings(infiles, outfiles):
+    byfile, rmfile = infiles
+    byout, rmout = outfiles
+    outputdir = 
+    command = ("qsub -cwd python SeqSorter.py {} {} -n1 BY -n2 RM -e -o {} -s1 {} -s2 {}".format(byfile, rmfile, outputdir, byout, rmout))
+    
 @follows(mkdir("counts"), remove_fasta_gff)
 @transform(os.path.join("mapped", "*"),
            regex(os.path.join("mapped", "(.*).bam")),
@@ -1040,7 +866,7 @@ def combine_snps(infiles, outfile):
                 d[name].append(l.strip().split("\t")[-1])
     with open(outfile, "w") as outf:
         outf.write("\t".join(d.keys()) + "\n")
-	print d.values()
+    print d.values()
         for i in range(len(d.values()[0])):
             outf.write("\t".join(v[i] for v in d.values()))
             outf.write("\n")

@@ -74,7 +74,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
     sam2 = pysam.Samfile(samfile2)
     
     results = compatibility_dict(lambda: compatibility_dict(lambda: compatibility_dict(int)))
-
+    
     for aligned1, aligned2 in izip(sam1, sam2):
         
         assert aligned1.qname == aligned2.qname
@@ -152,17 +152,17 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
                         quality_score_mismatch_counter[qual] += num
                     
     mismatch_prob_dict = {}
-    total_values_dict = {}
+    mismatch_prob_total_values = {}
     
     for qual, mismatch_count in quality_score_mismatch_counter.items():
 
         mismatch_prob = mismatch_count * 1.0 / ((mismatch_count + quality_score_match_counter[qual])*1.0)
         mismatch_prob_dict[qual] = mismatch_prob
-        total_values_dict[qual] = mismatch_count + quality_score_match_counter[qual]
+        mismatch_prob_total_values[qual] = mismatch_count + quality_score_match_counter[qual]
         
     #pprint(mismatch_prob_dict)
     
-    return mismatch_prob_dict, total_values_dict
+    return mismatch_prob_dict, mismatch_prob_total_values
 
 # main logic
 # call compare_mappings() on samfile1 and samfile2 from standard input 

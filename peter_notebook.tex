@@ -1,7 +1,7 @@
 \documentclass[11pt]{article}
 %Gummi|065|=)
 \usepackage[margin=1in]{geometry}
-\usepackage{amsmath}
+\usepackage{graphicx, fixltx2e, amsmath}
 \title{\textbf{Storey Lab Notebook}}
 \author{Peter Edge}
 \begin{document}
@@ -21,8 +21,6 @@ Today I finished studying the details of Emily's snp\_pipepline and began trying
 \begin{verbatim}
 cd git/SeqSorter/sample_data
 mkdir RM_bowtie_test S288C_bowtie_test
-bowtie2-build S288C_reference_genome_R64-1-1_20110203/S288C_reference_sequence_R64
-    -1-1_20110203.fsa S288C_reference_genome_R64-1-1_20110203
 bowtie2-build RM11_1A/assembly/genome.fa RM_bowtie_test/RM_index
 bowtie2-build S288C_reference_genome_R64-1-1_20110203/
     S288C_reference_sequence_R64-1-1_20110203.fsa S288C_bowtie_test/BY_index
@@ -81,7 +79,59 @@ Pr(mismatch) = 10^(Q/-10) + U
 2. extend SeqSorter to use HTSeq to characterize the number of reads that map to different genes
 \\
 \noindent
+\pagebreak
+\subsection*{Results of Bowtie \textbar \ SeqSort on E1a12.fastq}
+\begin{verbatim}
+Comparison of quality score error probs to calculated error probs:
+4891463 reads : same sorting decision
+5696 reads : different sorting decision
+665893	unmapped by bowtie
+29788	mapped by bowtie uniquely to BY
+19685	mapped by bowtie uniquely to RM
+3041863	double-mapped, but errors are same
+562974	double-mapped, classified as BY based on errors
+542341	double-mapped, classified as RM based on errors
+34615	double-mapped, unclassifiable based on errors
+TOTAL TIME: 3204.58062887
+\end{verbatim}
 
+\begin{figure}[!htpb]
+\centering
+\includegraphics[scale=0.6]{results/e1a12_pie.png}
+\caption{Pie chart of relative fractions of RNAseq reads that were mapped by bowtie or classified by SeqSorter for the E1a12 experiment.}
+\label{fig:e1a12_pie}
+\end{figure}
+\pagebreak
+
+\begin{figure}[!htpb]
+\centering
+\includegraphics[scale=0.7]{results/E1a12.png}
+\caption{Best fit line for results of estimateErrorProbs.py on E1a12 data. R\textsuperscript{2}=0.841074.}
+\label{fig:e1a12}
+\end{figure}
+
+\subsection*{Results of Bowtie \textbar \ SeqSort on G1a60.fastq}
+\begin{verbatim}
+Comparison of quality score error probs to calculated error probs:
+4648137 reads : same sorting decision
+4852 reads : different sorting decision
+393689	unmapped by bowtie
+34077	mapped by bowtie uniquely to BY
+21484	mapped by bowtie uniquely to RM
+3044121	double-mapped, but errors are same
+587348	double-mapped, classified as BY based on errors
+538265	double-mapped, classified as RM based on errors
+34005	double-mapped, unclassifiable based on errors
+TOTAL TIME: 3209.26929116
+\end{verbatim}
+
+\begin{figure}[!htpb]
+\centering
+\includegraphics[scale=0.7]{results/G1a60.png}
+\caption{Best fit line for results of estimateErrorProbs.py on G1a60 data. R\textsuperscript{2}=0.852710185136.}
+\label{fig:g1a60}
+\end{figure}
+\pagebreak
 \section*{Miscellaneous Remarks:}
 \subsection*{Python Multiprocessing}
 The hardest, most devious issue I encountered is that the multiprocessing module does not play well with pysam Samfile objects, presumably because of the C bindings that are abstracted by them. When I would pass Samfile objects as an argument for the method that is passed into pool.apply\_async() or pool.map(), the child process would terminate without warning upon the first access of a contained aligned\_read object, without any indication of a problem. The way to work around this is to NEVER pass a pre-existing Samfile object (or presumably, any other object that is a wrapper for C data structures) as an argument into pool.apply\_async, map, etc. My workaround for this was to pass in the filename of the samfiles to each process, have each process open its own Samfile with pysam.Samfile(filename), and then have them process and pass back the results as appropriate.
@@ -114,5 +164,6 @@ and replace any instance of collections.defaultdict with compatibility\_dict. If
 \\
 \noindent
 5. In python 2, pysam alignedreads have a qual that is a string, whereas in python 3 it is a bytearray. My solution was to explicitly cast alignedread.qual to a byte array before use ensuring that whether the version was python 2 or 3, I could just treat it as a bytearray (indexing in returns 70 instead of 'F' if the quality is F in that spot, same as if ord() was called)
+
 
 \end{document}

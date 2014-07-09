@@ -36,6 +36,10 @@ optional arguments:
                         name for genome 2 (reference for samfile 2)
   -o [OUTPUT_DIR], --output_dir [OUTPUT_DIR]
                         directory to write output to
+  -s1 [SORTED_SAM1], --sorted_sam1 [SORTED_SAM1]
+                        file to write sorted samfile for genome1
+  -s2 [SORTED_SAM2], --sorted_sam2 [SORTED_SAM2]
+                        file to write sorted samfile for genome2
   -p [PROCESSES], --processes [PROCESSES]
                         number of processes to use for sorting step, default =
                         number of CPU cores available
@@ -51,8 +55,6 @@ optional arguments:
   -pc [POSTERIOR_CUTOFF], --posterior_cutoff [POSTERIOR_CUTOFF]
                         lower-bound cutoff for probability that a read belongs
                         to a genome for it to be classified as that genome
-
-
 
 EXAMPLE:
 
@@ -70,9 +72,9 @@ from copy import copy
 import estimateErrorFreq
 import itertools
 import math
-import matplotlib as mpl
-mpl.use('Agg')
-import matplotlib.pyplot as plt
+#import matplotlib as mpl
+#mpl.use('Agg')
+#import matplotlib.pyplot as plt
 import multiprocessing as mp
 import os
 import pysam
@@ -92,6 +94,8 @@ def parseargs():
     parser.add_argument('-n2', '--name2', nargs='?', type = str, help='name for genome 2 (reference for samfile 2)', default='genome2')
     # various other parameters
     parser.add_argument('-o', '--output_dir', nargs='?', type = str, help='directory to write output to', default='output/')
+    parser.add_argument('-s1', '--sorted_sam1', nargs='?', type = str, help='file to write sorted samfile for genome1', default=None)
+    parser.add_argument('-s2', '--sorted_sam2', nargs='?', type = str, help='file to write sorted samfile for genome2', default=None)
     parser.add_argument('-p', '--processes', nargs='?', type = str, help='number of processes to use for sorting step, default = number of CPU cores available', default=mp.cpu_count())
     parser.add_argument('-e', '--estimate_err', nargs='?', type = int, help='set this flag to calculate actual random mismatch probabilities for more accurate mapping. WARNING: very slow', const=1)
     parser.add_argument('-c', '--compare_results', nargs='?', type = int, help='compare the results of SeqSorter w/ quality scores and SeqSorter w/ estimated error rates. WARNING: very slow', const=1)
@@ -131,7 +135,7 @@ class multimapped_read_sorter():
     # Store the results of sorting in a string of chars    
     
     # The init method fills the log10 match/mismatch probability lists
-    def __init__(self, samfile1=None, samfile2=None, genome1_name='genome1', genome2_name='genome2', mismatch_prob_dict=None, genome1_prior=0.5, posterior_cutoff=0.9, interleave_ix=0, output_dir='output/'):
+    def __init__(self, samfile1=None, samfile2=None, genome1_name='genome1', genome2_name='genome2', mismatch_prob_dict=None, genome1_prior=0.5, posterior_cutoff=0.9, interleave_ix=0):
         
         # initialize variables        
         self.samfile1 = samfile1
@@ -144,7 +148,6 @@ class multimapped_read_sorter():
         self.sort_fates = []
         self.logs = []
         self.interleave_ix = 0
-        self.output_dir = output_dir
         # set up regexes
         # regex for the MD string that specifies errors from the reference.
         # more information about the MD string: page 7 of http://samtools.github.io/hts-specs/SAMv1.pdf
@@ -164,47 +167,13 @@ class multimapped_read_sorter():
         # if mismatch probabilities have been computed empirically, use those
         # to overwrite the defaults
         if mismatch_prob_dict:
-            with open(os.path.join(self.output_dir, 'mismatch_probs_info.txt'), 'w') as outputfile:
-                print('mismatch_prob_dict', file=outputfile)
-                print(mismatch_prob_dict, file=outputfile)
-                print('\n',file=outputfile)
+
                 # overwrite the old, approximate values with empirically determined ones
                 for i in range(33,127):
                     if i in mismatch_prob_dict:
                         if mismatch_prob_dict[i] != 1:
                             self.log10_matched_base_prob[i] = math.log10(1.0 - mismatch_prob_dict[i])
                         self.log10_mismatched_base_prob[i] = math.log10(mismatch_prob_dict[i] / 3)
-
-                if interleave_ix == 0:
-                    
-                    measured_phred = [-10*math.log10(math.pow(10,i)*3) for i in self.log10_mismatched_base_prob[33:83]]
-                    qual_score_phred = range(0, 50)
-                    
-                    print('measured_phred', file=outputfile)
-                    print(measured_phred, file=outputfile)
-                    print('\n',file=outputfile)                    
-                    
-                    print('qual_score_phred', file=outputfile)
-                    print(qual_score_phred, file=outputfile)
-                    print('\n',file=outputfile) 
-
-                    try:                    
-                        fig, ax = plt.subplots()                    
-                        ax.scatter(qual_score_phred, measured_phred)
-                        # add an x=y line
-                        ax.plot(qual_score_phred, qual_score_phred, 'r')
-                        ax.set_xlabel('Quality Score', fontsize=20)
-                        ax.set_ylabel('-10*log10(Prob of Mismatch)', fontsize=20)
-                        ax.set_title('Quality Score vs. Calculated Probability of Mismatch')
-                        ax.grid(True)
-                        ax.set_xlim(-1, 51)
-                        ax.set_ylim(-1, 51)
-                    
-                        fig.tight_layout()
-        
-                        plt.savefig(os.path.join(self.output_dir, 'qual_scores_vs_actual_mismatch.png'), format='png')
-                    except:
-                        pass            
 
     # LOG
     # save strings that will later be written to the verbose output file        
@@ -336,14 +305,11 @@ class multimapped_read_sorter():
                 self.log(num_err1, num_err2, prob_genome1, classification, sort_fate)
                 self.category_counter[classification] += 1
     
-    def print_sorted_samfiles(self):
+    def print_sorted_samfiles(self, new_sam1_path, new_sam2_path):
         
         # open up old, unsorted samfiles
         sam1 = pysam.Samfile(self.samfile1)
         sam2 = pysam.Samfile(self.samfile2)
-        
-        new_sam1_path = os.path.join(self.output_dir, self.genome1_name+'_sorted.sam')
-        new_sam2_path = os.path.join(self.output_dir, self.genome2_name+'_sorted.sam')
         
         # open up samfiles to print sorted aligned_reads to
         new_sam1 = pysam.Samfile(new_sam1_path, 'wh', template=sam1)
@@ -368,9 +334,9 @@ class multimapped_read_sorter():
 # The procedure called by different processes using apply_async.
 # Processes aligned reads, moving in skips of size interleave_ix. It is recommended
 # that you do not call this from an external module
-def _worker_procedure(samfile1, samfile2, interleave_ix, num_processes, mismatch_prob_dict, genome1_name, genome2_name, genome1_prior, posterior_cutoff, output_dir):
+def _worker_procedure(samfile1, samfile2, interleave_ix, num_processes, mismatch_prob_dict, genome1_name, genome2_name, genome1_prior, posterior_cutoff):
 
-    sorter = multimapped_read_sorter(samfile1, samfile2, genome1_name, genome2_name, mismatch_prob_dict, genome1_prior, posterior_cutoff, interleave_ix, output_dir)
+    sorter = multimapped_read_sorter(samfile1, samfile2, genome1_name, genome2_name, mismatch_prob_dict, genome1_prior, posterior_cutoff, interleave_ix)
     sorter.untangle_two_samfiles(interleave_ix, num_processes)
     
     return sorter
@@ -422,19 +388,21 @@ def main():
     genome1_prior = args.genome1_prior
     posterior_cutoff = args.posterior_cutoff
     output_dir = args.output_dir
+    sorted_sam1 = args.sorted_sam1
+    # nice solution for default value via http://stackoverflow.com/questions/12007704/argparse-setting-optional-argument-with-value-of-mandatory-argument
+    sorted_sam1 = sorted_sam1 if sorted_sam1 else os.path.join(output_dir, '{}_sorted.sam'.format(genome1_name))
+    sorted_sam2 = args.sorted_sam2
+    sorted_sam2 = sorted_sam2 if sorted_sam2 else os.path.join(output_dir, '{}_sorted.sam'.format(genome2_name))
     
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+
                 
     # If estimate_error_prob is True, then calculate actual probabilities of
     # random mismatch for each phred score.
     if estimate_error_prob:
-        mismatch_prob_dict, total_values_dict = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name)
-        with open(os.path.join(output_dir, 'total_values_dict.txt'), 'w') as outputfile:
-            print('Total_values_dict', file=outputfile)
-            print(total_values_dict, file=outputfile)
+        mismatch_prob_dict, mismatch_prob_total_values = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name)
     else:
         mismatch_prob_dict = None
+        mismatch_prob_total_values = None
 
     # Create a pool of worker processes to do the sorting
     worker_pool = mp.Pool(processes=num_processes)
@@ -443,7 +411,7 @@ def main():
     # Create a set of interleave indices, to allow each process to only work on
     # one alignment every x alignments, where x is the number of processes running    
     for interleave_ix in range(0, num_processes):
-        args = (samfile1, samfile2, interleave_ix, num_processes, mismatch_prob_dict, genome1_name, genome2_name, genome1_prior, posterior_cutoff, output_dir)
+        args = (samfile1, samfile2, interleave_ix, num_processes, mismatch_prob_dict, genome1_name, genome2_name, genome1_prior, posterior_cutoff)
         async_results.append(worker_pool.apply_async(_worker_procedure, args))
     
     # Join the processes back to the main thread    
@@ -521,20 +489,33 @@ def main():
     for num, label in zip(fracs, labels):
         print('{}\t{}'.format(num, label))
     
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)    
+
+    ############################################################################
+    # PRINT OUTPUT : All printing occurs here
+    ############################################################################
+
+    # For each phred, print observed probability of mismatch and number of bases observed in creating that probability
+    with open(os.path.join(output_dir, 'mismatch_prob_info.txt'), 'w') as outputfile:
+        
+        for k in mismatch_prob_dict.keys():
+            print ('{}\t{}\t{}'.format(k,mismatch_prob_dict[k],mismatch_prob_total_values[k]), file=outputfile)
+
+    # Print two newly sorted Samfiles, one for each genome
+    combined_sorter.print_sorted_samfiles(sorted_sam1, sorted_sam2)
+        
+    # Print all the logs to the verbose output file    
+    verbose_filepath = os.path.join(output_dir, 'supplementary_output.txt')
+    with open(verbose_filepath, 'w') as verbose_file:
+        print('err {}\terr {}\tprob {}\tcategory'.format(genome1_name, genome2_name, genome1_name), file=verbose_file)
+    
+        for line in combined_sorter.logs:
+            print(line,file=verbose_file)
+        
     # Print the total time
     t2 = time.time()
     print('TOTAL TIME: {}'.format(t2-t1))
-    
-    # print to the new sorted samfiles
-    combined_sorter.print_sorted_samfiles()
-    
-    verbose_filepath = os.path.join(output_dir, 'supplementary_output.txt')
-    # print all the logs to the verbose output file
-    verbose_file = open(verbose_filepath, 'w')
-    print('err {}\terr {}\tprob {}\tcategory'.format(genome1_name, genome2_name, genome1_name), file=verbose_file)
-    for line in combined_sorter.logs:
-        print(line,file=verbose_file)
-    verbose_file.close()
 
 if __name__ == '__main__':
     main()
