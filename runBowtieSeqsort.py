@@ -15,10 +15,10 @@ def parseargs():
     parser.add_argument('fastqfile', nargs='?', type = str, help='path to fastq', default=sys.stdin)
     args = parser.parse_args()
     return args
-    
+
 def run_seqsort(fastqfile):
-    by_index = '/grid/users/pedge/SeqSorter/data/BY_index/BY_index'
-    rm_index = '/grid/users/pedge/SeqSorter/data/RM_index/RM_index'    
+    by_index = 'all_sample_analysis/index/BY_index'
+    rm_index = 'all_sample_analysis/index/RM_index'
     
     raw_name = fastqfile[:-6]
     full_path = os.path.join('/Genomics/grid/users/emilysn/ase/analysis/RNA-Seq/RUN_111213OB/split_fastq', fastqfile)
@@ -31,10 +31,10 @@ def run_seqsort(fastqfile):
     rm_out = os.path.join('all_sample_analysis/split_by_genotypes', '{}_RM_sorted.sam'.format(raw_name))
     os.system('python SeqSorter.py {} {} -n1 BY -n2 RM -e -s1 {} -s2 {} -o {}'.format(by_sam, rm_sam, by_out, rm_out, report))    
 
-    by_count_out = os.path.join('all_sample_analysis/count', '{}_count.o'.format(raw_name))
-    by_count_err = os.path.join('all_sample_analysis/count', '{}_count.e'.format(raw_name))
-    rm_count_out = os.path.join('all_sample_analysis/count', '{}_count.o'.format(raw_name))
-    rm_count_err = os.path.join('all_sample_analysis/count', '{}_count.e'.format(raw_name))  
+    by_count_out = os.path.join('all_sample_analysis/count', '{}_BY_count.o'.format(raw_name))
+    by_count_err = os.path.join('all_sample_analysis/count', '{}_BY_count.e'.format(raw_name))
+    rm_count_out = os.path.join('all_sample_analysis/count', '{}_RM_count.o'.format(raw_name))
+    rm_count_err = os.path.join('all_sample_analysis/count', '{}_RM_count.e'.format(raw_name))  
     
     os.system('htseq-count -i ID -s no -t gene {} sample_data/S288C_reference_genome_R64-1-1_20110203/cropped_saccharomyces_cerevisiae_R64-1-1_20110208.gff > {} 2> {}'.format(by_out,by_count_out, by_count_err))
     os.system('htseq-count -i ID -s no -t gene {} sample_data/RM11_1A/assembly/genome.gff > {} 2> {}'.format(rm_out, rm_count_out, rm_count_err))
