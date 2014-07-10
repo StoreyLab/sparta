@@ -36,8 +36,8 @@ def run_seqsort(fastqfile):
     rm_count_out = os.path.join('all_sample_analysis/count', '{}_RM_count.o'.format(raw_name))
     rm_count_err = os.path.join('all_sample_analysis/count', '{}_RM_count.e'.format(raw_name))  
     
-    os.system('htseq-count -i ID -s no -t gene {} sample_data/S288C_reference_genome_R64-1-1_20110203/cropped_saccharomyces_cerevisiae_R64-1-1_20110208.gff > {} 2> {}'.format(by_out,by_count_out, by_count_err))
-    os.system('htseq-count -i ID -s no -t gene {} sample_data/RM11_1A/assembly/genome.gff > {} 2> {}'.format(rm_out, rm_count_out, rm_count_err))
+    os.system('htseq-count -i ID -s no -t gene {} genomes/BY.gff > {} 2> {}'.format(by_out,by_count_out, by_count_err))
+    os.system('htseq-count -i ID -s no -t gene {} genomes/RM.gff > {} 2> {}'.format(rm_out, rm_count_out, rm_count_err))
     
 if __name__ == '__main__':
     
