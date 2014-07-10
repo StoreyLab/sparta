@@ -27,8 +27,8 @@ if not os.path.exists('all_sample_analysis/out'):
 if not os.path.exists('all_sample_analysis/err'):
     os.makedirs('all_sample_analysis/err')
 
-by_genome = 'sample_data/S288C_reference_genome_R64-1-1_20110203/S288C_reference_sequence_R64-1-1_20110203.fsa'
-rm_genome = 'sample_data/RM11_1A/assembly/genome.fa' 
+by_genome = 'genomes/BY.fsa'
+rm_genome = 'genomes/RM.fa' 
 
 by_index = 'all_sample_analysis/index/BY_index'
 rm_index = 'all_sample_analysis/index/RM_index'
