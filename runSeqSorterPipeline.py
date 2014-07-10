@@ -6,6 +6,9 @@ Created on Tue Jul  8 17:29:49 2014
 """
 import os
 
+if not os.path.exists('all_sample_analysis/count'):
+    os.makedirs('all_sample_analysis/count')
+
 if not os.path.exists('all_sample_analysis/index'):
     os.makedirs('all_sample_analysis/index')
 
