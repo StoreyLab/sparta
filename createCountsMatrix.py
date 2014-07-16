@@ -11,7 +11,7 @@ from copy import copy
 
 all_count_files = os.listdir('all_sample_analysis/count')
 count_output_files = filter((lambda x: x[-1:] == 'o'), all_count_files)
-
+print('number of output files is {}'.format(len(count_output_files)))
 counts_dict = collections.defaultdict(lambda: collections.defaultdict(int))
 all_names = []
 
