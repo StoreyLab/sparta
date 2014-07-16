@@ -7,13 +7,14 @@ Created on Mon Jul  7 15:15:19 2014
 
 # based on example from:
 # http://www.walkingrandomly.com/?p=5215
-
+import os
+import math
 import numpy as np
 from scipy.optimize import curve_fit
 #import matplotlib as mpl
-#mpl.use('Qt4Agg')
+#mpl.use('GTK3Agg')
 from matplotlib import pyplot as plt
-
+'''
 title = 'E1a12 Quality Score vs. Calculated Probability of Mismatch'
 actual_phred = ([8.281213204366239, 6.955214743808923, 7.849136533789498, 9.768489425923496, 11.121652762022357,
                  10.984179814741575, 14.215415131440974, 16.650038244190352, 15.731433334665972, 15.02974323481132,
@@ -25,7 +26,7 @@ actual_phred = ([8.281213204366239, 6.955214743808923, 7.849136533789498, 9.7684
                  36.07531054192317, 36.75821199662197, 37.04523586956818])
 qual_score_phred = ([2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
                      26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41])
-
+'''
 '''
 title = 'G1a60 Quality Score vs. Calculated Probability of Mismatch'
 actual_phred = ([8.40460777100269, 6.493495727635167,7.268787670256572, 9.699990810481605, 10.8119836271688,
@@ -39,19 +40,47 @@ actual_phred = ([8.40460777100269, 6.493495727635167,7.268787670256572, 9.699990
 qual_score_phred = ([2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
                      26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41])
 '''
-assert len(actual_phred) == len(qual_score_phred)
+title = 'simulated read mismatch prob'
+#filename = 'dwgsim/mismatch_prob_info.txt'
+dir_list = os.listdir('all_sample_analysis/mismatch_prob_reports')
+dir_list.remove('Unassigned_lane0_index')
+dir_list.remove('Unassigned_lane1_index')
+path_list = [os.path.join('all_sample_analysis/mismatch_prob_reports',x,'mismatch_prob_info.txt') for x in dir_list]
 
-xdata = np.array(qual_score_phred)
-ydata = np.array(actual_phred)
+phred = []
+mismatch_prob = []
+
+for path in path_list:
+    
+    with open(path,'r') as infile:
+        for line in infile:
+            e = line.rstrip().split('\t')
+            phred.append(float(e[0]))
+            mismatch_prob.append(float(e[1]))
+
+'''
+with open (filename, 'r') as inf:
+    for l in inf:
+        elements = l.rstrip().split('\t')
+        phred.append(float(elements[0]))
+        mismatch_prob.append(float(elements[1]))
+        
+'''
+assert len(phred) == len(mismatch_prob)
+
+xdata = np.array([pow(10, (x-33)/-10.0) for x in phred])
+ydata = np.array(mismatch_prob)
+#xdata = np.array([x-33 for x in phred])
+#ydata = np.array([math.log10(x)*-10.0 for x in mismatch_prob])
 
 def func(x, u1, u2, u3):
-    return u1*(x**2) + u2*x + u3
+    return np.log10(u1*(x**2) + u2*x + u3)
     
 popt, pcov = curve_fit(func,xdata,ydata,p0=(0,0.75, 8))
 
 res =  sum((ydata - func(xdata,popt[0], popt[1], popt[2]))**2)
 mean_y = np.mean(ydata)
-mean_y_array = np.array([mean_y]*len(actual_phred))
+mean_y_array = np.array([mean_y]*len(phred))
 tot = sum((ydata - mean_y_array)**2)
 R2 = 1-(res/tot)
 print ('R^2 equals: {}'.format(R2))
@@ -63,10 +92,13 @@ ax.scatter(xdata, ydata)
 ax.plot(xdata, f_of_x)
 ax.plot(xdata, xdata, 'r')
 ax.grid(True)
-ax.set_xlabel('Quality Score', fontsize=20)
-ax.set_ylabel('-10*log10(Prob of Mismatch)', fontsize=20)
+ax.set_xlabel('quality score mismatch prob', fontsize=20)
+ax.set_ylabel('calculated mismatch prob', fontsize=20)
 ax.set_title(title)
-ax.set_xlim(1, 42)
-ax.set_ylim(1, 42)
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_xlim(0, 0.2)
+ax.set_ylim(0, 0.2)
+
 fig.tight_layout()
-plt.savefig('E1a12.png',format='png')
+plt.savefig('all_mismatch_probs.png',format='png')
