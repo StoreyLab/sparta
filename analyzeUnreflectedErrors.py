@@ -40,12 +40,12 @@ actual_phred = ([8.40460777100269, 6.493495727635167,7.268787670256572, 9.699990
 qual_score_phred = ([2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
                      26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41])
 '''
-title = 'simulated read mismatch prob'
+title = 'Phred Scores vs Actual Mismatch Probability'
 #filename = 'dwgsim/mismatch_prob_info.txt'
-dir_list = os.listdir('all_sample_analysis/mismatch_prob_reports')
+dir_list = os.listdir('all_sample_analysis/reports')
 dir_list.remove('Unassigned_lane0_index')
 dir_list.remove('Unassigned_lane1_index')
-path_list = [os.path.join('all_sample_analysis/mismatch_prob_reports',x,'mismatch_prob_info.txt') for x in dir_list]
+path_list = [os.path.join('all_sample_analysis/reports',x,'mismatch_prob_info.txt') for x in dir_list]
 
 phred = []
 mismatch_prob = []
@@ -89,7 +89,7 @@ f_of_x = [func(x, popt[0], popt[1], popt[2]) for x in xdata]
 
 fig, ax = plt.subplots()
 ax.scatter(xdata, ydata)
-ax.plot(xdata, f_of_x)
+#ax.plot(xdata, f_of_x)
 ax.plot(xdata, xdata, 'r')
 ax.grid(True)
 ax.set_xlabel('quality score mismatch prob', fontsize=20)

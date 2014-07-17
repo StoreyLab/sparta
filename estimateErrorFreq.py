@@ -75,14 +75,14 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name):
     
     results = compatibility_dict(lambda: compatibility_dict(lambda: compatibility_dict(int)))
     
-    i = 0
+    #i = 0
     for aligned1, aligned2 in izip(sam1, sam2):
 
         # sample every 10th read        
-        if i % 10 != 0:
-            i += 1
-            continue
-        i += 1
+        #if i % 10 != 0:
+        #    i += 1
+        #    continue
+        #i += 1
         
         assert aligned1.qname == aligned2.qname
         
