@@ -97,7 +97,7 @@ def parseargs():
     parser.add_argument('-o', '--output_dir', nargs='?', type = str, help='directory to write output to', default='output/')
     parser.add_argument('-s1', '--sorted_sam1', nargs='?', type = str, help='file to write sorted samfile for genome1', default=None)
     parser.add_argument('-s2', '--sorted_sam2', nargs='?', type = str, help='file to write sorted samfile for genome2', default=None)
-    parser.add_argument('-p', '--processes', nargs='?', type = str, help='number of processes to use for sorting step, default = number of CPU cores available', default=mp.cpu_count())
+    parser.add_argument('-p', '--processes', nargs='?', type = int, help='number of processes to use for sorting step, default = number of CPU cores available', default=mp.cpu_count())
     parser.add_argument('-e', '--estimate_err', nargs='?', type = int, help='set this flag to calculate actual random mismatch probabilities for more accurate mapping. WARNING: very slow', const=1)
     parser.add_argument('-c', '--compare_results', nargs='?', type = int, help='compare the results of SeqSorter w/ quality scores and SeqSorter w/ estimated error rates. WARNING: very slow', const=1)
     parser.add_argument('-gp', '--genome1_prior', nargs='?', type = float, help='prior probability that a read belongs to genome1', default=0.5)
