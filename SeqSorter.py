@@ -348,7 +348,7 @@ class multimapped_read_sorter():
                 # check that we really do have both mates, from both mappings
                 assert aligned1.qname == aligned2.qname
                 assert aligned1.qname == aligned1_mate.qname
-                assert aligned1_mate.qname == aligned2_mate.qame
+                assert aligned1_mate.qname == aligned2_mate.qname
                                     
                 if (aligned1.is_unmapped and aligned1_mate.is_unmapped and
                     aligned2.is_unmapped and aligned2_mate.is_unmapped):
