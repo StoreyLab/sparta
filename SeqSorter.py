@@ -349,7 +349,9 @@ class multimapped_read_sorter():
                     temp = aligned2
                     aligned2 = aligned2_mate
                     aligned2_mate = temp
-                    
+                print (aligned1.seq + '==' + aligned2.seq)
+                print (aligned1_mate.seq + '==' + aligned2_mate.seq)
+
                 assert (aligned1.seq == aligned2.seq)
                 assert (aligned1_mate.seq == aligned2_mate.seq)
                 
@@ -362,15 +364,15 @@ class multimapped_read_sorter():
                     aligned2.is_unmapped and aligned2_mate.is_unmapped):
                     # neither genome has a hit
                     # reads are probably junk
-                    self.log_debug('0\t0\t\t')
+                    print('0\t0\t\t')
                 elif (aligned1.is_unmapped != aligned1_mate.is_unmapped and
                       aligned2.is_unmapped and aligned2_mate.is_unmapped):
                     # genome1 has one hit
-                    self.log_debug('1\t0\t\t')
+                    print('1\t0\t\t')
                 elif (aligned1.is_unmapped and aligned1_mate.is_unmapped and
                       aligned2.is_unmapped != aligned2_mate.is_unmapped):
                     # genome2 has one hit
-                    self.log_debug('0\t1\t\t')
+                    print('0\t1\t\t')
                 elif (aligned1.is_unmapped != aligned1_mate.is_unmapped and
                       aligned2.is_unmapped != aligned2_mate.is_unmapped):
                     # both have one
@@ -380,7 +382,7 @@ class multimapped_read_sorter():
                     elif not aligned1_mate.is_unmapped and not aligned2_mate.is_unmapped:
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned1_mate, aligned2_mate)
                         
-                    self.log_debug('1\t1\t{}\t'.format(sort_fate))
+                    print('1\t1\t{}\t'.format(sort_fate))
 
                 elif (not aligned1.is_unmapped and not aligned1_mate.is_unmapped and
                       aligned2.is_unmapped != aligned2_mate.is_unmapped):
@@ -391,7 +393,7 @@ class multimapped_read_sorter():
                     else:
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned1, aligned2)
                         
-                    self.log_debug('2\t1\t{}\t'.format(sort_fate))
+                    print('2\t1\t{}\t'.format(sort_fate))
                 elif (aligned1.is_unmapped != aligned1_mate.is_unmapped and
                       not aligned2.is_unmapped and not aligned2_mate.is_unmapped):
                     # genome2 has two hits, but genome1 has only one
@@ -400,14 +402,14 @@ class multimapped_read_sorter():
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned2_mate, aligned1_mate)
                     else:
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned2, aligned1)
-                    self.log_debug('1\t2\t{}\t'.format(sort_fate))
+                    print('1\t2\t{}\t'.format(sort_fate))
                 elif (not aligned1.is_unmapped and not aligned1_mate.is_unmapped and
                       not aligned2.is_unmapped and not aligned2_mate.is_unmapped):
                     # both have two hits
                     classification_1, prob_genome1_1, sort_fate_1 = self.untangle_two_mappings(aligned1, aligned2)
                     classification_2, prob_genome1_2, sort_fate_2 = self.untangle_two_mappings(aligned1_mate, aligned2_mate)
                     
-                    self.log_debug('2\t2\t{}\t{}'.format(sort_fate_1, sort_fate_2))
+                    print('2\t2\t{}\t{}'.format(sort_fate_1, sort_fate_2))
                 else:
                     # should happen literally never
                     print('Peter is bad at control flow.')
