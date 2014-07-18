@@ -395,6 +395,20 @@ class multimapped_read_sorter():
                         
                     print('1\t1\t{}\t'.format(sort_fate))
 
+
+                elif (not aligned1.is_unmapped and not aligned1_mate.is_unmapped and
+                      aligned2.is_unmapped and aligned2_mate.is_unmapped):
+                    # alignment1 mapped both, alignment2 mapped none
+
+                    print('2\t0\t{}\t')
+                   
+                elif (aligned1.is_unmapped and aligned1_mate.is_unmapped and
+                      not aligned2.is_unmapped and not aligned2_mate.is_unmapped):
+                    # alignment2 mapped both, alignment1 mapped none
+
+                    print('0\t2\t{}\t') 
+
+
                 elif (not aligned1.is_unmapped and not aligned1_mate.is_unmapped and
                       aligned2.is_unmapped != aligned2_mate.is_unmapped):
                     # genome1 has two hits, but genome2 has only one
@@ -423,6 +437,11 @@ class multimapped_read_sorter():
                     print('2\t2\t{}\t{}'.format(sort_fate_1, sort_fate_2))
                 else:
                     # should happen literally never
+                    print(aligned1.is_unmapped)
+                    print(aligned2.is_unmapped)
+                    print(aligned1_mate.is_unmapped)
+                    print(aligned2_mate.is_unmapped)
+
                     print('Peter is bad at control flow.')
                     assert(False)
                     
