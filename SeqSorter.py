@@ -352,6 +352,9 @@ class multimapped_read_sorter():
                 if aligned1.seq != aligned2.seq and aligned1_revcomp != aligned2.seq:
             
                     print(aligned1.seq + "=="+ aligned2.seq +"and"+ aligned1_revcomp+ "!=" +aligned2.seq)
+                    print(aligned1_revcomp != aligned2.seq)
+                    print(aligned1_revcomp)
+                    print(aligned2.seq)
                     print("so now switching aligned2 with aligned2_mate")
                     temp = aligned2
                     aligned2 = aligned2_mate
