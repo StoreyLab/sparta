@@ -540,7 +540,10 @@ def main():
     else:
         mismatch_prob_dict = None
         mismatch_prob_total_values = None
-
+        
+    _worker_procedure(samfile1, samfile2, True, 0, 1, None, 'BY', 'RM', 0.5, 0.9)
+    
+    '''
     # Create a pool of worker processes to do the sorting
     worker_pool = mp.Pool(processes=num_processes)
     async_results = []
@@ -563,6 +566,7 @@ def main():
     
     # Combine the results from each child process into the parent process    
     combined_sorter = merge_sorters(unpacked_results)
+    '''    
     '''
     # redo the analysis without calculating mismatch probabilities empirically,
     # and compare the results
