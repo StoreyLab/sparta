@@ -65,6 +65,7 @@ python2 SeqSorter.py sample_data/S288C_bowtie_test/BY_bowtie_out.sam \
 '''
 
 import argparse
+from Bio.Seq import Seq
 import collections
 from compatibility import compatibility_dict
 from compatibility import izip
@@ -345,15 +346,16 @@ class multimapped_read_sorter():
                 next_tuple = next(zipped_samfiles)       
                 aligned1_mate, aligned2_mate = next_tuple
                 
-                if aligned1.seq != aligned2.seq:
+                aligned1_revcomp = Seq(aligned1.seq).reverse_complement()
+                aligned1_mate_revcomp = Seq(aligned1_mate.seq).reverse_complement()
+
+                if aligned1.seq != aligned2.seq and aligned1_revcomp != aligned2.seq:
                     temp = aligned2
                     aligned2 = aligned2_mate
                     aligned2_mate = temp
-                print (aligned1.seq + '==' + aligned2.seq)
-                print (aligned1_mate.seq + '==' + aligned2_mate.seq)
-
-                assert (aligned1.seq == aligned2.seq)
-                assert (aligned1_mate.seq == aligned2_mate.seq)
+                
+                assert (aligned1.seq == aligned2.seq or aligned1_revcomp == aligned2.seq)
+                assert (aligned1_mate.seq == aligned2_mate.seq or aligned1_mate_revcomp == aligned2_mate.seq)
                 
                 # check that we really do have both mates, from both mappings
                 assert aligned1.qname == aligned2.qname
