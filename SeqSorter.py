@@ -348,15 +348,18 @@ class multimapped_read_sorter():
                 
                 aligned1_revcomp = Seq(aligned1.seq).reverse_complement()
                 aligned1_mate_revcomp = Seq(aligned1_mate.seq).reverse_complement()
-
+                
                 if aligned1.seq != aligned2.seq and aligned1_revcomp != aligned2.seq:
+            
+                    print(aligned1.seq + "=="+ aligned2.seq +"and"+ aligned1_revcomp+ "!=" +aligned2.seq)
+                    print("so now switching aligned2 with aligned2_mate")
                     temp = aligned2
                     aligned2 = aligned2_mate
                     aligned2_mate = temp
-                print('')
+                print('----------------------------------------------------------------')
                 print(aligned1.seq + "=="+ aligned2.seq +"or"+ aligned1_revcomp+ "==" +aligned2.seq)
                 print(aligned1_mate.seq+ "=="+ aligned2_mate.seq+ "or" +aligned1_mate_revcomp+ "=="+ aligned2_mate.seq)
-                print('')
+                print('------------------------------------------------------------------')
                 assert (aligned1.seq == aligned2.seq or aligned1_revcomp == aligned2.seq)
                 assert (aligned1_mate.seq == aligned2_mate.seq or aligned1_mate_revcomp == aligned2_mate.seq)
                 
