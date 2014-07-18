@@ -353,7 +353,10 @@ class multimapped_read_sorter():
                     temp = aligned2
                     aligned2 = aligned2_mate
                     aligned2_mate = temp
-                
+                print('')
+                print(aligned1.seq + "=="+ aligned2.seq +"or"+ aligned1_revcomp+ "==" +aligned2.seq)
+                print(aligned1_mate.seq+ "=="+ aligned2_mate.seq+ "or" +aligned1_mate_revcomp+ "=="+ aligned2_mate.seq)
+                print('')
                 assert (aligned1.seq == aligned2.seq or aligned1_revcomp == aligned2.seq)
                 assert (aligned1_mate.seq == aligned2_mate.seq or aligned1_mate_revcomp == aligned2_mate.seq)
                 
