@@ -346,23 +346,23 @@ class multimapped_read_sorter():
                 next_tuple = next(zipped_samfiles)       
                 aligned1_mate, aligned2_mate = next_tuple
                 
-                aligned1_revcomp = Seq(aligned1.seq).reverse_complement()
-                aligned1_mate_revcomp = Seq(aligned1_mate.seq).reverse_complement()
+                aligned1_revcomp = str(Seq(aligned1.seq).reverse_complement())
+                aligned1_mate_revcomp = str(Seq(aligned1_mate.seq).reverse_complement())
                 
                 if aligned1.seq != aligned2.seq and aligned1_revcomp != aligned2.seq:
             
-                    print(aligned1.seq + "=="+ aligned2.seq +"and"+ aligned1_revcomp+ "!=" +aligned2.seq)
-                    print(aligned1_revcomp != aligned2.seq)
-                    print(aligned1_revcomp)
-                    print(aligned2.seq)
-                    print("so now switching aligned2 with aligned2_mate")
+                    #print(aligned1.seq + "=="+ aligned2.seq +"and"+ aligned1_revcomp+ "!=" +aligned2.seq)
+                    #print(aligned1_revcomp != aligned2.seq)
+                    #print(aligned1_revcomp)
+                    #print(aligned2.seq)
+                    #print("so now switching aligned2 with aligned2_mate")
                     temp = aligned2
                     aligned2 = aligned2_mate
                     aligned2_mate = temp
-                print('----------------------------------------------------------------')
-                print(aligned1.seq + "=="+ aligned2.seq +"or"+ aligned1_revcomp+ "==" +aligned2.seq)
-                print(aligned1_mate.seq+ "=="+ aligned2_mate.seq+ "or" +aligned1_mate_revcomp+ "=="+ aligned2_mate.seq)
-                print('------------------------------------------------------------------')
+                #print('----------------------------------------------------------------')
+                #print(aligned1.seq + "=="+ aligned2.seq +"or"+ aligned1_revcomp+ "==" +aligned2.seq)
+                #print(aligned1_mate.seq+ "=="+ aligned2_mate.seq+ "or" +aligned1_mate_revcomp+ "=="+ aligned2_mate.seq)
+                #print('------------------------------------------------------------------')
                 assert (aligned1.seq == aligned2.seq or aligned1_revcomp == aligned2.seq)
                 assert (aligned1_mate.seq == aligned2_mate.seq or aligned1_mate_revcomp == aligned2_mate.seq)
                 
