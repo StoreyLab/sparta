@@ -269,15 +269,25 @@ class multimapped_read_sorter():
             zipped_samfiles = izip(sam1, sam2)
             
             for aligned_pair in zipped_samfiles:
-
+                
+                # the main difference with paired end reads is that bowtie should output
+                # a read-mate pair, followed by another read-mate pair, in the same order
+                # regardless of whether it is the genome1 mapping or the genome2 mapping
+                # but, for a given read-mate pair we don't necessarily know if we are 
+                # getting the read we want or its mate.
+                # so we have to check, and switch them if necessary
+                aligned1, aligned2 = aligned_pair
+                
+                # take aligned pairs in sets of 2 to also get the mate
+                # don't forget to assign aligned_pair to next tuple before end of iter
+                next_tuple = next(zipped_samfiles)       
+                aligned1_mate, aligned2_mate = next_tuple
+                
                 if (ix % num_processes != interleave_ix):
+                    aligned_pair = next_tuple
                     ix += 1
                     continue
                 ix += 1
-                
-                aligned1, aligned2 = aligned_pair
-                next_tuple = next(zipped_samfiles)       
-                aligned1_mate, aligned2_mate = next_tuple
                                 
                 aligned1_revcomp = str(Seq(aligned1.seq).reverse_complement())
                 aligned1_mate_revcomp = str(Seq(aligned1_mate.seq).reverse_complement())
@@ -546,7 +556,7 @@ def main():
     # random mismatch for each phred score.
     if estimate_error_prob:
         pileup_logfile = os.path.join(output_dir, 'pileup_counts')
-        mismatch_prob_dict, mismatch_prob_total_values = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, pileup_logfile)
+        mismatch_prob_dict, mismatch_prob_total_values = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, pileup_logfile, paired_end)
     else:
         mismatch_prob_dict = None
         mismatch_prob_total_values = None

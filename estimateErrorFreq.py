@@ -15,6 +15,7 @@ actual observed scores at each phred score.
 '''
 
 import argparse
+from Bio.Seq import Seq
 import copy
 from compatibility import compatibility_dict
 from compatibility import izip
@@ -68,7 +69,7 @@ def create_genome_seq(aligned):
             
     return genome_seq 
     
-def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, outfile_name):
+def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, outfile_name, paired_end):
     
     sam1 = pysam.Samfile(samfile1)
     sam2 = pysam.Samfile(samfile2)
@@ -79,39 +80,115 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
     logfile_cutoff = 20
     sample_every = 10    
     
-    for aligned1, aligned2 in izip(sam1, sam2):
-
-        # sample every 10th read        
-        if i % sample_every != 0:
-            i += 1
-            continue
-        i += 1
+    if not paired_end:
         
-        assert aligned1.qname == aligned2.qname
-        
-        if not aligned1.is_unmapped and not aligned2.is_unmapped:
-            
-            assert len(aligned1.seq) == len(aligned2.seq)
-            
-            # both alignments mapped
-            pos_dict1 = dict(aligned1.aligned_pairs)
-            pos_dict2 = dict(aligned2.aligned_pairs)
-            
-            qual = bytearray(aligned1.qual)
-            genome_seq1 = create_genome_seq(aligned1)
-            genome_seq2 = create_genome_seq(aligned2)
-            
-            for i in range(0, len(aligned1.seq)):
-                            
-                if genome_seq1[i] == genome_seq2[i]:
-                    
-                    chrom1 = sam1.getrname(aligned1.tid)
-                    pos1 = pos_dict1[i]      
-                    chrom2 = sam2.getrname(aligned2.tid)
-                    pos2 = pos_dict2[i]
-                    
-                    results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1.seq[i]][qual[i]] += 1
+        for aligned1, aligned2 in izip(sam1, sam2):
     
+            # sample every 10th read        
+            if i % sample_every != 0:
+                i += 1
+                continue
+            i += 1
+            
+            assert aligned1.qname == aligned2.qname
+            
+            if not aligned1.is_unmapped and not aligned2.is_unmapped:
+                
+                assert len(aligned1.seq) == len(aligned2.seq)
+                
+                # both alignments mapped
+                pos_dict1 = dict(aligned1.aligned_pairs)
+                pos_dict2 = dict(aligned2.aligned_pairs)
+                
+                qual = bytearray(aligned1.qual)
+                genome_seq1 = create_genome_seq(aligned1)
+                genome_seq2 = create_genome_seq(aligned2)
+                
+                for i in range(0, len(aligned1.seq)):
+                                
+                    if genome_seq1[i] == genome_seq2[i]:
+                        
+                        chrom1 = sam1.getrname(aligned1.tid)
+                        pos1 = pos_dict1[i]      
+                        chrom2 = sam2.getrname(aligned2.tid)
+                        pos2 = pos_dict2[i]
+                        
+                        results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1.seq[i]][qual[i]] += 1
+    else:
+        
+        # the main difference with paired end reads is that bowtie should output
+        # a read-mate pair, followed by another read-mate pair, in the same order
+        # regardless of whether it is the genome1 mapping or the genome2 mapping
+        # but, for a given read-mate pair we don't necessarily know if we are 
+        # getting the read we want or its mate.
+        # so we have to check, and switch them if necessary
+        zipped_samfiles = izip(sam1, sam2)
+        for aligned_pair in zipped_samfiles:
+    
+            # take aligned pairs in sets of 2 to also get the mate
+            # don't forget to assign aligned_pair to next tuple before end of iter
+            aligned1, aligned2 = aligned_pair
+            next_tuple = next(zipped_samfiles)       
+            aligned1_mate, aligned2_mate = next_tuple
+            
+            # sample every 10th read + mate combo       
+            if i % sample_every != 0:
+                aligned_pair = next_tuple
+                i += 1
+                continue
+            i += 1
+            
+            aligned1_revcomp = str(Seq(aligned1.seq).reverse_complement())
+            aligned1_mate_revcomp = str(Seq(aligned1_mate.seq).reverse_complement())
+            
+            # The RNA reads in aligned1 might be flip-flopped
+            # (As in, aligned1 actually refers to aligned2_mate)
+            # in this case, switch aligned2 and aligned2_mate
+            if aligned1.seq != aligned2.seq and aligned1_revcomp != aligned2.seq:
+                
+                temp = aligned2
+                aligned2 = aligned2_mate
+                aligned2_mate = temp
+            
+            # aligned1 RNA read should equal aligned2 RNA read.
+            # mate RNA reads should also match.
+            assert (aligned1.seq == aligned2.seq or aligned1_revcomp == aligned2.seq)
+            assert (aligned1_mate.seq == aligned2_mate.seq or aligned1_mate_revcomp == aligned2_mate.seq)
+            
+            # qname field should match for all 4 alignedread objects
+            # because really it is 2 copies of the same read+mate pair
+            assert aligned1.qname == aligned2.qname
+            assert aligned1.qname == aligned1_mate.qname
+            assert aligned1_mate.qname == aligned2_mate.qname
+                
+            for a1, a2 in [(aligned1, aligned2),(aligned1_mate, aligned2_mate)]:
+                
+                if not a1.is_unmapped and not a2.is_unmapped:
+                    
+                    assert len(a1.seq) == len(a2.seq)
+                    
+                    # both alignments mapped
+                    pos_dict1 = dict(a1.aligned_pairs)
+                    pos_dict2 = dict(a2.aligned_pairs)
+                    
+                    qual = bytearray(a1.qual)
+                    genome_seq1 = create_genome_seq(a1)
+                    genome_seq2 = create_genome_seq(a2)
+                    
+                    for i in range(0, len(a1.seq)):
+                                    
+                        if genome_seq1[i] == genome_seq2[i]:
+                            
+                            chrom1 = sam1.getrname(a1.tid)
+                            pos1 = pos_dict1[i]      
+                            chrom2 = sam2.getrname(a2.tid)
+                            pos2 = pos_dict2[i]
+                            
+                            results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][a1.seq[i]][qual[i]] += 1
+                
+            aligned_pair = next_tuple
+        
+        
     quality_score_match_counter = compatibility_dict(int)
     quality_score_mismatch_counter = compatibility_dict(int)
         
