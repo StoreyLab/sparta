@@ -23,9 +23,9 @@ Run the program without arguments to see the description of optional arguments
 '''
 
 import argparse
-from Bio.Seq import Seq
 from compatibility import compatibility_dict
 from compatibility import izip
+from compatibility import rev_comp
 from copy import copy
 import estimateErrorFreq
 import itertools
@@ -253,7 +253,7 @@ class multimapped_read_sorter():
                     self.category_counter['match2'] += 1
                     self.log('NA', num_err2, '0', 'mapped2', 2)
                 
-                elif aligned1.opt("MD") == aligned2.opt("MD"):
+                elif err1 == err2:
                     # the read has the same errors to both genomes, so it is impossible
                     # to sort it one way or the other
                     self.category_counter['same_errors'] += 1
@@ -288,35 +288,65 @@ class multimapped_read_sorter():
                     ix += 1
                     continue
                 ix += 1
-                                
-                aligned1_revcomp = str(Seq(aligned1.seq).reverse_complement())
-                aligned1_mate_revcomp = str(Seq(aligned1_mate.seq).reverse_complement())
-                
-                # The RNA reads in aligned1 might be flip-flopped
-                # (As in, aligned1 actually refers to aligned2_mate)
-                # in this case, switch aligned2 and aligned2_mate
-                if aligned1.seq != aligned2.seq and aligned1_revcomp != aligned2.seq:
-                    
-                    temp = aligned2
-                    aligned2 = aligned2_mate
-                    aligned2_mate = temp
-                
-                # aligned1 RNA read should equal aligned2 RNA read.
-                # mate RNA reads should also match.
-                assert (aligned1.seq == aligned2.seq or aligned1_revcomp == aligned2.seq)
-                assert (aligned1_mate.seq == aligned2_mate.seq or aligned1_mate_revcomp == aligned2_mate.seq)
                 
                 # qname field should match for all 4 alignedread objects
                 # because really it is 2 copies of the same read+mate pair
                 assert aligned1.qname == aligned2.qname
                 assert aligned1.qname == aligned1_mate.qname
-                assert aligned1_mate.qname == aligned2_mate.qname
+                assert aligned1_mate.qname == aligned2_mate.qname                
                 
-                err_a1 = aligned1.opt("MD") if not aligned1.is_unmapped else None
-                err_a1_mate = aligned1_mate.opt("MD") if not aligned1_mate.is_unmapped else None
-                err_a2 = aligned2.opt("MD") if not aligned2.is_unmapped else None
-                err_a2_mate = aligned2_mate.opt("MD") if not aligned2_mate.is_unmapped else None
+                # The RNA reads in aligned1 might be flip-flopped
+                # (As in, aligned1 actually refers to aligned2_mate)
+                # in this case, switch aligned2 and aligned2_mate
+                                
+                if aligned1.is_reverse == aligned2.is_reverse:
+                    
+                    if aligned1.seq != aligned2.seq:
+                        # we have the mate instead
+                        # switch aligned2 with its mate
+                        temp = aligned2
+                        aligned2 = aligned2_mate
+                        aligned2_mate = temp
+                    
+                    if aligned1.is_reverse == aligned2.is_reverse:
+                        assert aligned1.seq == aligned2.seq
+                    else:
+                        assert rev_comp(aligned1.seq) == aligned2.seq
+                    
+                    if aligned1_mate.is_reverse == aligned2_mate.is_reverse:
+                        assert aligned1_mate.seq == aligned2_mate.seq
+                    else:
+                        assert rev_comp(aligned1_mate.seq) == aligned2_mate.seq
+                
+                else:
+                    # one read is reversed, need to revcomp one to see if equal                    
+                    
+                    aligned1_revcomp = rev_comp(aligned1.seq)
+                    
+                    if aligned1_revcomp != aligned2.seq:
+                        # we have the mate instead
+                        # switch aligned2 with its mate
+                        temp = aligned2
+                        aligned2 = aligned2_mate
+                        aligned2_mate = temp
+                    
+                    if aligned1.is_reverse == aligned2.is_reverse:
+                        assert aligned1.seq == aligned2.seq
+                    else:
+                        assert aligned1_revcomp == aligned2.seq
+                    
 
+                    if aligned1_mate.is_reverse == aligned2_mate.is_reverse:
+                        assert aligned1_mate.seq == aligned2_mate.seq
+                    else:
+                        assert rev_comp(aligned1_mate.seq) == aligned2_mate.seq
+
+
+                err_a1 = re.findall(self.MD_REGEX, aligned1.opt("MD")) if not aligned1.is_unmapped else None
+                err_a1_mate = re.findall(self.MD_REGEX, aligned1_mate.opt("MD")) if not aligned1_mate.is_unmapped else None
+                err_a2 = re.findall(self.MD_REGEX, aligned2.opt("MD")) if not aligned2.is_unmapped else None
+                err_a2_mate = re.findall(self.MD_REGEX, aligned2_mate.opt("MD")) if not aligned2_mate.is_unmapped else None
+                
                 if (aligned1.is_unmapped and aligned1_mate.is_unmapped and
                     aligned2.is_unmapped and aligned2_mate.is_unmapped):
                     # neither genome has a hit
@@ -409,17 +439,13 @@ class multimapped_read_sorter():
                 elif (not aligned1.is_unmapped and not aligned1_mate.is_unmapped and
                       not aligned2.is_unmapped and not aligned2_mate.is_unmapped):
                     
-                    # both have two hits
-                    err1 = err_a1.extend(err_a1_mate)
-                    err2 = err_a2.extend(err_a2_mate)
-
-                    if err1 == err2:
+                    if err_a1 == err_a2 and err_a1_mate == err_a2_mate:
                         self.category_counter['same_errors'] += 2
-                        self.log(len(err1), len(err2), '0.5', 'unclassified: same errors', 0)
+                        self.log(len(err_a1) + len(err_a1_mate), len(err_a2) + len(err_a2_mate), '0.5', 'unclassified: same errors', 0)
 
                     else:
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned1, aligned2, aligned1_mate, aligned2_mate)
-                        self.log(len(err1), len(err2), prob_genome1, classification, sort_fate)
+                        self.log(len(err_a1) + len(err_a1_mate), len(err_a2) + len(err_a2_mate), prob_genome1, classification, sort_fate)
                         self.category_counter[classification] += 2
                     
                 else:
@@ -630,10 +656,11 @@ def main():
     ############################################################################
 
     # For each phred, print observed probability of mismatch and number of bases observed in creating that probability
-    with open(os.path.join(output_dir, 'mismatch_prob_info.txt'), 'w') as outputfile:
-        
-        for k in mismatch_prob_dict.keys():
-            print ('{}\t{}\t{}'.format(k,mismatch_prob_dict[k],mismatch_prob_total_values[k]), file=outputfile)
+    if mismatch_prob_dict and mismatch_prob_total_values:
+        with open(os.path.join(output_dir, 'mismatch_prob_info.txt'), 'w') as outputfile:
+            
+            for k in mismatch_prob_dict.keys():
+                print ('{}\t{}\t{}'.format(k,mismatch_prob_dict[k],mismatch_prob_total_values[k]), file=outputfile)
 
     # Print two newly sorted Samfiles, one for each genome
     combined_sorter.print_sorted_samfiles(sorted_sam1, sorted_sam2)
@@ -641,13 +668,10 @@ def main():
     # Print all the logs to the verbose output file    
     verbose_filepath = os.path.join(output_dir, 'supplementary_output.txt')
     with open(verbose_filepath, 'w') as verbose_file:
-        print('err genome1 ({})\terr genome2 ({})\tprob genome1 ({})\tcategory'.format(genome1_name, genome2_name, genome1_name), file=verbose_file)
+        print('errs_to_1({})\terrs_to_2({})\tprob_of_1({})\tclassification'.format(genome1_name, genome2_name, genome1_name), file=verbose_file)
     
         for line in combined_sorter.logs:
             print(line,file=verbose_file)
-    
-    for line in combined_sorter.logs:
-        print(line)
         
     # Print the total time
     t2 = time.time()

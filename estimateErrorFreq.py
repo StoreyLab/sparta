@@ -15,10 +15,10 @@ actual observed scores at each phred score.
 '''
 
 import argparse
-from Bio.Seq import Seq
 import copy
 from compatibility import compatibility_dict
 from compatibility import izip
+from compatibility import rev_comp
 from pprint import pprint
 import pysam
 import re
@@ -83,7 +83,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
     if not paired_end:
         
         for aligned1, aligned2 in izip(sam1, sam2):
-    
+
             # sample every 10th read        
             if i % sample_every != 0:
                 i += 1
@@ -124,13 +124,13 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
         # so we have to check, and switch them if necessary
         zipped_samfiles = izip(sam1, sam2)
         for aligned_pair in zipped_samfiles:
-    
+
             # take aligned pairs in sets of 2 to also get the mate
             # don't forget to assign aligned_pair to next tuple before end of iter
             aligned1, aligned2 = aligned_pair
             next_tuple = next(zipped_samfiles)       
             aligned1_mate, aligned2_mate = next_tuple
-            
+
             # sample every 10th read + mate combo       
             if i % sample_every != 0:
                 aligned_pair = next_tuple
@@ -138,28 +138,57 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                 continue
             i += 1
             
-            aligned1_revcomp = str(Seq(aligned1.seq).reverse_complement())
-            aligned1_mate_revcomp = str(Seq(aligned1_mate.seq).reverse_complement())
-            
-            # The RNA reads in aligned1 might be flip-flopped
-            # (As in, aligned1 actually refers to aligned2_mate)
-            # in this case, switch aligned2 and aligned2_mate
-            if aligned1.seq != aligned2.seq and aligned1_revcomp != aligned2.seq:
-                
-                temp = aligned2
-                aligned2 = aligned2_mate
-                aligned2_mate = temp
-            
-            # aligned1 RNA read should equal aligned2 RNA read.
-            # mate RNA reads should also match.
-            assert (aligned1.seq == aligned2.seq or aligned1_revcomp == aligned2.seq)
-            assert (aligned1_mate.seq == aligned2_mate.seq or aligned1_mate_revcomp == aligned2_mate.seq)
-            
             # qname field should match for all 4 alignedread objects
             # because really it is 2 copies of the same read+mate pair
             assert aligned1.qname == aligned2.qname
             assert aligned1.qname == aligned1_mate.qname
-            assert aligned1_mate.qname == aligned2_mate.qname
+            assert aligned1_mate.qname == aligned2_mate.qname                
+            
+            # The RNA reads in aligned1 might be flip-flopped
+            # (As in, aligned1 actually refers to aligned2_mate)
+            # in this case, switch aligned2 and aligned2_mate
+                            
+            if aligned1.is_reverse == aligned2.is_reverse:
+                
+                if aligned1.seq != aligned2.seq:
+                    # we have the mate instead
+                    # switch aligned2 with its mate
+                    temp = aligned2
+                    aligned2 = aligned2_mate
+                    aligned2_mate = temp
+                
+                if aligned1.is_reverse == aligned2.is_reverse:
+                    assert aligned1.seq == aligned2.seq
+                else:
+                    assert rev_comp(aligned1.seq) == aligned2.seq
+                
+                if aligned1_mate.is_reverse == aligned2_mate.is_reverse:
+                    assert aligned1_mate.seq == aligned2_mate.seq
+                else:
+                    assert rev_comp(aligned1_mate.seq) == aligned2_mate.seq
+            
+            else:
+                # one read is reversed, need to revcomp one to see if equal                    
+                
+                aligned1_revcomp = rev_comp(aligned1.seq)
+                
+                if aligned1_revcomp != aligned2.seq:
+                    # we have the mate instead
+                    # switch aligned2 with its mate
+                    temp = aligned2
+                    aligned2 = aligned2_mate
+                    aligned2_mate = temp
+                
+                if aligned1.is_reverse == aligned2.is_reverse:
+                    assert aligned1.seq == aligned2.seq
+                else:
+                    assert aligned1_revcomp == aligned2.seq
+                
+
+                if aligned1_mate.is_reverse == aligned2_mate.is_reverse:
+                    assert aligned1_mate.seq == aligned2_mate.seq
+                else:
+                    assert rev_comp(aligned1_mate.seq) == aligned2_mate.seq
                 
             for a1, a2 in [(aligned1, aligned2),(aligned1_mate, aligned2_mate)]:
                 
@@ -194,7 +223,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
         
     with open(outfile_name, 'w') as outfile:
         
-        print('Summary of read pileup counts, min_pileup_height={}, sample_every={}'.format(logfile_cutoff, sample_every))
+        print('Summary of read pileup counts, min_pileup_height={}, sample_every={}'.format(logfile_cutoff, sample_every), file=outfile)
         for coordinate_pair, nuc_to_qual_dict in results.items():
             # iterate through genome coordinate pairs and their nested dictionaries
             
