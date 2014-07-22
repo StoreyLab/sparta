@@ -545,6 +545,10 @@ def main():
     genome1_prior = args.genome1_prior
     posterior_cutoff = args.posterior_cutoff
     output_dir = args.output_dir
+    
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir) 
+
     # nice solution for default value via http://stackoverflow.com/questions/12007704/argparse-setting-optional-argument-with-value-of-mandatory-argument
     sorted_sam1 = args.sorted_sam1
     sorted_sam1 = sorted_sam1 if sorted_sam1 else os.path.join(output_dir, '{}_sorted.sam'.format(genome1_name))
@@ -619,10 +623,7 @@ def main():
             ])
             
     for num, label in zip(fracs, labels):
-        print('{}\t{}'.format(num, label))
-    
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)    
+        print('{}\t{}'.format(num, label))   
 
     ############################################################################
     # PRINT OUTPUT : All printing occurs here
