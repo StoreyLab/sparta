@@ -50,7 +50,7 @@ def parseargs():
 # take an aligned read, return the genomic seq EXCEPT for deletions (^)
 def create_genome_seq(aligned):
     
-    genome_seq = list(copy.copy(aligned.seq))
+    genome_seq = list(copy.copy(aligned.seq)) if type(aligned.seq) == str else list(copy.copy(aligned.seq.decode('UTF-8')))
     
     # see samtools documentation for MD string
     err = re.findall(MD_REGEX, aligned.opt("MD"))
@@ -78,7 +78,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
     
     i = 0
     logfile_cutoff = 20
-    sample_every = 10    
+    sample_every = 10 
     
     if not paired_end:
         
@@ -104,6 +104,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                 genome_seq1 = create_genome_seq(aligned1)
                 genome_seq2 = create_genome_seq(aligned2)
                 
+                aligned1_seq = aligned1.seq if type(aligned1.seq) == str else aligned1.seq.decode('UTF-8')
                 for i in range(0, len(aligned1.seq)):
                                 
                     if genome_seq1[i] == genome_seq2[i]:
@@ -113,7 +114,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                         chrom2 = sam2.getrname(aligned2.tid)
                         pos2 = pos_dict2[i]
                         
-                        results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1.seq[i]][qual[i]] += 1
+                        results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1_seq[i]][qual[i]] += 1
     else:
         
         # the main difference with paired end reads is that bowtie should output
@@ -204,6 +205,8 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                     genome_seq1 = create_genome_seq(a1)
                     genome_seq2 = create_genome_seq(a2)
                     
+                    a1_seq = a1.seq if type(aligned1.seq) == str else a1.seq.decode('UTF-8')
+
                     for i in range(0, len(a1.seq)):
                                     
                         if genome_seq1[i] == genome_seq2[i]:
@@ -213,7 +216,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                             chrom2 = sam2.getrname(a2.tid)
                             pos2 = pos_dict2[i]
                             
-                            results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][a1.seq[i]][qual[i]] += 1
+                            results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][a1_seq[i]][qual[i]] += 1
                 
             aligned_pair = next_tuple
         
@@ -223,7 +226,9 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
         
     with open(outfile_name, 'w') as outfile:
         
-        print('Summary of read pileup counts, min_pileup_height={}, sample_every={}'.format(logfile_cutoff, sample_every), file=outfile)
+        print('#min_pileup_height={}, sample_every={}'.format(logfile_cutoff, sample_every), file=outfile)
+        print('chrom1\tchrom2\tpos1\tpos2\tgenome_seq(i)\tbase_count[A]\tbase_count[C]\tbase_count[G]\tbase_count[T]\tbase_count[N]', file=outfile)
+           
         for coordinate_pair, nuc_to_qual_dict in results.items():
             # iterate through genome coordinate pairs and their nested dictionaries
             

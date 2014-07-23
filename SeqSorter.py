@@ -221,7 +221,13 @@ class multimapped_read_sorter():
         ix = 0
         
         if not self.paired_end: # default: single reads
-        
+            
+            # TODO:
+            # perform rudimentary test for paired end reads; if first two
+            # reads have same qname attribute, print a warning that the reads
+            # are likely paired end but SeqSorter mode is single reads         
+
+            
             for aligned1, aligned2 in izip(sam1, sam2):
                 
                 if (ix % num_processes != interleave_ix):
@@ -551,36 +557,19 @@ def merge_sorters(sorter_list):
     new_sorter.sort_fates = list(next(it) for it in itertools.cycle(sort_fate_iters))    
     return new_sorter
 
-# MAIN FUNCTION
-# Create a pool of worker processes and have them process aligned_reads from samfile1
-# and samfile2 in an interleaved fashion 
-def main():
+# SORT SAMFILES
+# This is the main program logic and is the recommended means for calling from other modules
+# Takes two samfiles that map the same RNAseq reads (mapped via bowtie from same
+# RNA-seq fastq file) to separate genomes, and sorts them to parental allele types
+# Creates a pool of worker processes and has them process aligned_reads from samfile1
+# and samfile2 in an interleaved fashion
+def sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, num_processes, estimate_error_prob, genome1_prior, posterior_cutoff, output_dir, sorted_sam1, sorted_sam2):
     
     # Start timer
     t1 = time.time()
     
-    # Get command line args
-    args = parseargs()
-    samfile1 = args.samfile1
-    samfile2 = args.samfile2
-    paired_end = True if args.paired_end else False
-    genome1_name = args.name1
-    genome2_name = args.name2
-    num_processes = args.processes
-    estimate_error_prob = True if args.estimate_err else False
-    genome1_prior = args.genome1_prior
-    posterior_cutoff = args.posterior_cutoff
-    output_dir = args.output_dir
-    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir) 
-
-    # nice solution for default value via http://stackoverflow.com/questions/12007704/argparse-setting-optional-argument-with-value-of-mandatory-argument
-    sorted_sam1 = args.sorted_sam1
-    sorted_sam1 = sorted_sam1 if sorted_sam1 else os.path.join(output_dir, '{}_sorted.sam'.format(genome1_name))
-    sorted_sam2 = args.sorted_sam2
-    sorted_sam2 = sorted_sam2 if sorted_sam2 else os.path.join(output_dir, '{}_sorted.sam'.format(genome2_name))
-    
     
     # If estimate_error_prob is True, then calculate actual probabilities of
     # random mismatch for each phred score.
@@ -678,4 +667,24 @@ def main():
     print('TOTAL TIME: {}'.format(t2-t1))
 
 if __name__ == '__main__':
-    main()
+    
+    # Get command line args
+    args = parseargs()
+    samfile1 = args.samfile1
+    samfile2 = args.samfile2
+    paired_end = True if args.paired_end else False
+    genome1_name = args.name1
+    genome2_name = args.name2
+    num_processes = args.processes
+    estimate_error_prob = True if args.estimate_err else False
+    genome1_prior = args.genome1_prior
+    posterior_cutoff = args.posterior_cutoff
+    output_dir = args.output_dir
+    
+    # nice solution for default value via http://stackoverflow.com/questions/12007704/argparse-setting-optional-argument-with-value-of-mandatory-argument
+    sorted_sam1 = args.sorted_sam1
+    sorted_sam1 = sorted_sam1 if sorted_sam1 else os.path.join(output_dir, '{}_sorted.sam'.format(genome1_name))
+    sorted_sam2 = args.sorted_sam2
+    sorted_sam2 = sorted_sam2 if sorted_sam2 else os.path.join(output_dir, '{}_sorted.sam'.format(genome2_name))    
+    
+    sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, num_processes, estimate_error_prob, genome1_prior, posterior_cutoff, output_dir, sorted_sam1, sorted_sam2)
