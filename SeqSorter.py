@@ -56,6 +56,7 @@ def parseargs():
     parser.add_argument('-e', '--estimate_err', nargs='?', type = int, help='set this flag to calculate actual random mismatch probabilities for more accurate mapping. WARNING: very slow', const=1)
     parser.add_argument('-gp', '--genome1_prior', nargs='?', type = float, help='prior probability that a read belongs to genome1', default=0.5)
     parser.add_argument('-pc', '--posterior_cutoff', nargs='?', type = float, help='lower-bound cutoff for probability that a read belongs to a genome for it to be classified as that genome', default=0.9)
+    parser.add_argument('-q', '--quiet', nargs='?', type = int, help='set this flag to supress writing final counts to stdout (default: False)', const=1)
 
     # default to help option. credit to unutbu: http://stackoverflow.com/questions/4042452/display-help-message-with-python-argparse-when-script-is-called-without-any-argu
     if len(sys.argv) < 3:
@@ -90,7 +91,8 @@ class multimapped_read_sorter():
     # Store the results of sorting in a string of chars    
     
     # The init method fills the log10 match/mismatch probability lists
-    def __init__(self, samfile1=None, samfile2=None, paired_end=False, mismatch_prob_dict=None, genome1_prior=0.5, posterior_cutoff=0.9, interleave_ix=0):
+    def __init__(self, samfile1=None, samfile2=None, paired_end=False, mismatch_prob_dict=None,
+                 genome1_prior=0.5, posterior_cutoff=0.9, interleave_ix=0):
         
         # initialize variables        
         self.samfile1 = samfile1
@@ -563,7 +565,10 @@ def merge_sorters(sorter_list):
 # RNA-seq fastq file) to separate genomes, and sorts them to parental allele types
 # Creates a pool of worker processes and has them process aligned_reads from samfile1
 # and samfile2 in an interleaved fashion
-def sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, num_processes, estimate_error_prob, genome1_prior, posterior_cutoff, output_dir, sorted_sam1, sorted_sam2):
+def sort_samfiles(samfile1, samfile2, paired_end=False, genome1_name='genome1',
+                  genome2_name='genome2', num_processes=mp.cpu_count(), estimate_error_prob=False,
+                  genome1_prior=0.5, posterior_cutoff=0.9, output_dir='output/',
+                  sorted_sam1='output/genome1_sorted.sam', sorted_sam2='output/genome2_sorted.sam', quiet=False):
     
     # Start timer
     t1 = time.time()
@@ -575,7 +580,9 @@ def sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, nu
     # random mismatch for each phred score.
     if estimate_error_prob:
         pileup_logfile = os.path.join(output_dir, 'pileup_counts')
-        mismatch_prob_dict, mismatch_prob_total_values = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, pileup_logfile, paired_end)
+        mismatch_prob_dict, mismatch_prob_total_values = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2,
+                                                                                                     genome1_name, genome2_name,
+                                                                                                     pileup_logfile, paired_end)
     else:
         mismatch_prob_dict = None
         mismatch_prob_total_values = None
@@ -595,7 +602,8 @@ def sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, nu
         # Create a set of interleave indices, to allow each process to only work on
         # one alignment every x alignments, where x is the number of processes running    
         for interleave_ix in range(0, num_processes):
-            args = (samfile1, samfile2, paired_end, interleave_ix, num_processes, mismatch_prob_dict, genome1_prior, posterior_cutoff)
+            args = (samfile1, samfile2, paired_end, interleave_ix,
+                    num_processes, mismatch_prob_dict, genome1_prior, posterior_cutoff)
             async_results.append(worker_pool.apply_async(_worker_procedure, args))
         
         # Join the processes back to the main thread   
@@ -614,8 +622,8 @@ def sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, nu
     else:
         # NOT MULTIPROCESSING
         # call the worker procedure within main process, without interleaving
-        combined_sorter = _worker_procedure(samfile1, samfile2, True, 0, 1, None, 0.5, 0.9)
-        
+        combined_sorter = _worker_procedure(samfile1, samfile2, paired_end, 0, 1, mismatch_prob_dict, genome1_prior, posterior_cutoff)
+
     category_counter = combined_sorter.category_counter
     
     labels =([
@@ -636,14 +644,15 @@ def sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, nu
             category_counter['classified2'],
             category_counter['unclassified'],
             ])
-            
-    for num, label in zip(fracs, labels):
-        print('{}\t{}'.format(num, label))   
+    
+    if not quiet:
+        for num, label in zip(fracs, labels):
+            print('{}\t{}'.format(num, label))
 
     ############################################################################
     # PRINT OUTPUT : All printing occurs here
     ############################################################################
-
+    
     # For each phred, print observed probability of mismatch and number of bases observed in creating that probability
     if mismatch_prob_dict and mismatch_prob_total_values:
         with open(os.path.join(output_dir, 'mismatch_prob_info.txt'), 'w') as outputfile:
@@ -664,7 +673,8 @@ def sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, nu
         
     # Print the total time
     t2 = time.time()
-    print('TOTAL TIME: {}'.format(t2-t1))
+    if not quiet:
+        print('TOTAL TIME: {}'.format(t2-t1))
 
 if __name__ == '__main__':
     
@@ -680,6 +690,7 @@ if __name__ == '__main__':
     genome1_prior = args.genome1_prior
     posterior_cutoff = args.posterior_cutoff
     output_dir = args.output_dir
+    quiet = True if args.quiet else False
     
     # nice solution for default value via http://stackoverflow.com/questions/12007704/argparse-setting-optional-argument-with-value-of-mandatory-argument
     sorted_sam1 = args.sorted_sam1
@@ -687,4 +698,4 @@ if __name__ == '__main__':
     sorted_sam2 = args.sorted_sam2
     sorted_sam2 = sorted_sam2 if sorted_sam2 else os.path.join(output_dir, '{}_sorted.sam'.format(genome2_name))    
     
-    sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, num_processes, estimate_error_prob, genome1_prior, posterior_cutoff, output_dir, sorted_sam1, sorted_sam2)
+    sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, num_processes, estimate_error_prob, genome1_prior, posterior_cutoff, output_dir, sorted_sam1, sorted_sam2, quiet)

@@ -10,7 +10,9 @@ Created on Tue Jun 17 16:44:51 2014
 
 from __future__ import print_function
 import unittest
+import filecmp
 import math
+import os
 import SeqSorter
 import pysam
 
@@ -209,6 +211,83 @@ class test_untangle(unittest.TestCase):
         read2 = read_gen('AAAAAACTAA','FFAAFFFFFF','6A0A2')
         result, NIL, NIL2 = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'classified1')
+
+# test that the same result is obtained when SeqSorter is run in single core
+# (no child processes) mode and multiprocessing mode
+class test_multiprocessing(unittest.TestCase):
+    
+    def setUp(self):
+        pass
+    
+    # test single reads on a small (~10K lines) single-read file
+    def test_single_reads(self):
+
+        single1 = 'unit_test/data/single_reads_genome1.sam'
+        single2 = 'unit_test/data/single_reads_genome2.sam'
+        
+        # no multiprocessing
+        SeqSorter.sort_samfiles(single1, single2, num_processes=1, output_dir='unit_test/output/no_mp',
+                      sorted_sam1='unit_test/output/no_mp/sorted1.sam', sorted_sam2='unit_test/output/no_mp/sorted2.sam', quiet=True)
+        
+        # processes = cpu_count
+        SeqSorter.sort_samfiles(single1, single2, output_dir='unit_test/output/mp',
+                      sorted_sam1='unit_test/output/mp/sorted1.sam', sorted_sam2='unit_test/output/mp/sorted2.sam', quiet=True)
+
+        # processes = 10
+        SeqSorter.sort_samfiles(single1, single2, num_processes=10, output_dir='unit_test/output/mp10',
+                      sorted_sam1='unit_test/output/mp10/sorted1.sam', sorted_sam2='unit_test/output/mp10/sorted2.sam', quiet=True)
+                      
+        match, mismatch, errors = filecmp.cmpfiles('unit_test/output/no_mp', 'unit_test/output/mp',
+                                                   common=['sorted1.sam', 'sorted2.sam', 'supplementary_output.txt'])
+                                                   
+        match2, mismatch2, errors2 = filecmp.cmpfiles('unit_test/output/no_mp', 'unit_test/output/mp10',
+                                                      common=['sorted1.sam', 'sorted2.sam', 'supplementary_output.txt'])
+        
+        # check that output was created, and no files mismatched, and no errors occured
+        assert match != []
+        assert mismatch == []
+        assert errors == []
+        assert match2 != []
+        assert mismatch2 == []
+        assert errors2 == []
+        
+        # clean up
+        os.system('rm -rf unit_test/output/*')
+
+    # test on a small (~10K lines) paired-end read file
+    def test_paired_end_reads(self):
+        
+        single1 = 'unit_test/data/paired_end_reads_genome1.sam'
+        single2 = 'unit_test/data/paired_end_reads_genome2.sam'
+        
+        # no multiprocessing
+        SeqSorter.sort_samfiles(single1, single2, paired_end=True, num_processes=1, output_dir='unit_test/output/no_mp',
+                      sorted_sam1='unit_test/output/no_mp/sorted1.sam', sorted_sam2='unit_test/output/no_mp/sorted2.sam', quiet=True)
+        
+        # processes = cpu_count
+        SeqSorter.sort_samfiles(single1, single2, paired_end=True, output_dir='unit_test/output/mp',
+                      sorted_sam1='unit_test/output/mp/sorted1.sam', sorted_sam2='unit_test/output/mp/sorted2.sam', quiet=True)
+
+        # processes = 10
+        SeqSorter.sort_samfiles(single1, single2, paired_end=True, num_processes=10, output_dir='unit_test/output/mp10',
+                      sorted_sam1='unit_test/output/mp10/sorted1.sam', sorted_sam2='unit_test/output/mp10/sorted2.sam', quiet=True)
+                      
+        match, mismatch, errors = filecmp.cmpfiles('unit_test/output/no_mp', 'unit_test/output/mp',
+                                                   common=['sorted1.sam', 'sorted2.sam', 'supplementary_output.txt'])
+                                                   
+        match2, mismatch2, errors2 = filecmp.cmpfiles('unit_test/output/no_mp', 'unit_test/output/mp10',
+                                                      common=['sorted1.sam', 'sorted2.sam', 'supplementary_output.txt'])
+
+        # check that output was created, and no files mismatched, and no errors occured
+        assert match != []
+        assert mismatch == []
+        assert errors == []
+        assert match2 != []
+        assert mismatch2 == []
+        assert errors2 == []
+        
+        # clean up
+        os.system('rm -rf unit_test/output/*')
     
 if __name__ == '__main__':
 
