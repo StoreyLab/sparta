@@ -223,13 +223,7 @@ class multimapped_read_sorter():
         ix = 0
         
         if not self.paired_end: # default: single reads
-            
-            # TODO:
-            # perform rudimentary test for paired end reads; if first two
-            # reads have same qname attribute, print a warning that the reads
-            # are likely paired end but SeqSorter mode is single reads         
-
-            
+                        
             for aligned1, aligned2 in izip(sam1, sam2):
                 
                 if (ix % num_processes != interleave_ix):
@@ -464,6 +458,8 @@ class multimapped_read_sorter():
                 # CRUCIAL STEP: skip the mate read
                 aligned_pair = next_tuple
                 
+        sam1.close()
+        sam2.close()
                 
                 
     def print_sorted_samfiles(self, new_sam1_path, new_sam2_path):
@@ -520,6 +516,11 @@ class multimapped_read_sorter():
                 aligned_reads_processed += 1
             
             assert aligned_reads_processed == 2 * len(self.sort_fates)
+            
+        sam1.close()
+        sam2.close()
+        new_sam1.close()
+        new_sam2.close()
 
 # WORKER PROCEDURE
 # The procedure called by different processes using apply_async.
@@ -586,6 +587,24 @@ def sort_samfiles(samfile1, samfile2, paired_end=False, genome1_name='genome1',
     else:
         mismatch_prob_dict = None
         mismatch_prob_total_values = None
+
+    if paired_end == False:
+        # If in single read mode, perform rudimentary test for paired end reads.
+        # if first two reads have same qname attribute, print a warning that the reads
+        # are likely paired end but SeqSorter mode is single read
+        paired_end_test_ix = 0
+        prev_qname = None
+        test_sam = pysam.Samfile(samfile1)
+        for aligned in test_sam:
+            if paired_end_test_ix >= 1:
+                if prev_qname == aligned.qname:
+                    print('\nWARNING: In single-read mode, but file appears to contain '+
+                    'paired-end reads\n         Consider rerunning with -pe option\n', file=sys.stderr)
+                break
+            prev_qname = aligned.qname
+            paired_end_test_ix += 1
+    
+        test_sam.close()
 
     # whether or not multiprocessed, combined_sorter will hold the results        
     combined_sorter = None

@@ -220,7 +220,9 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                 
             aligned_pair = next_tuple
         
-        
+    sam1.close()
+    sam2.close()
+    
     quality_score_match_counter = compatibility_dict(int)
     quality_score_mismatch_counter = compatibility_dict(int)
         
@@ -292,7 +294,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
         mismatch_prob = mismatch_count * 1.0 / ((mismatch_count + quality_score_match_counter[qual])*1.0)
         mismatch_prob_dict[qual] = mismatch_prob
         mismatch_prob_total_values[qual] = mismatch_count + quality_score_match_counter[qual]
-            
+        
     return mismatch_prob_dict, mismatch_prob_total_values
 
 # main logic
