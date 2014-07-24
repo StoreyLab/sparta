@@ -217,7 +217,8 @@ class test_untangle(unittest.TestCase):
 class test_multiprocessing(unittest.TestCase):
     
     def setUp(self):
-        pass
+        if not os.path.exists('unit_test/output'):
+            os.makedirs('unit_test/output')
     
     # test single reads on a small (~10K lines) single-read file
     def test_single_reads(self):
