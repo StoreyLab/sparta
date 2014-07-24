@@ -234,8 +234,8 @@ class multimapped_read_sorter():
                 assert aligned1.qname == aligned2.qname
                 err1 = re.findall(self.MD_REGEX, aligned1.opt("MD")) if not aligned1.is_unmapped else None
                 err2 = re.findall(self.MD_REGEX, aligned2.opt("MD")) if not aligned2.is_unmapped else None                
-                num_err1 = len(err1) if err1 else None                
-                num_err2 = len(err2) if err2 else None
+                num_err1 = len(err1) if err1 != None else None                
+                num_err2 = len(err2) if err2 != None else None
                 
                 if aligned1.is_unmapped and aligned2.is_unmapped:
                     # the read does not map to either genome
@@ -361,14 +361,14 @@ class multimapped_read_sorter():
                     # genome1 has one hit
 
                     self.category_counter['match1'] += 2
-                    num_err1 = len(err_a1) if err_a1 else len(err_a1_mate)
+                    num_err1 = len(err_a1) if err_a1 != None else len(err_a1_mate)
                     self.log(num_err1, 'NA', '1', 'mapped1', 1)
                     
                 elif (aligned1.is_unmapped and aligned1_mate.is_unmapped and
                       aligned2.is_unmapped != aligned2_mate.is_unmapped):
                     # genome2 has one hit
                     self.category_counter['match2'] += 2
-                    num_err2 = len(err_a2) if err_a2 else len(err_a2_mate)
+                    num_err2 = len(err_a2) if err_a2 != None else len(err_a2_mate)
                     self.log('NA', num_err2, '0', 'mapped2', 2)
                 
                 elif (aligned1.is_unmapped != aligned1_mate.is_unmapped and

@@ -77,8 +77,8 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
     results = compatibility_dict(lambda: compatibility_dict(lambda: compatibility_dict(int)))
     
     i = 0
-    logfile_cutoff = 20
-    sample_every = 10 
+    logfile_cutoff = 0 # 20
+    sample_every = 1 # 10
     
     if not paired_end:
         
@@ -107,14 +107,14 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                 aligned1_seq = aligned1.seq if type(aligned1.seq) == str else aligned1.seq.decode('UTF-8')
                 for i in range(0, len(aligned1.seq)):
                                 
-                    if genome_seq1[i] == genome_seq2[i]:
                         
-                        chrom1 = sam1.getrname(aligned1.tid)
-                        pos1 = pos_dict1[i]      
-                        chrom2 = sam2.getrname(aligned2.tid)
-                        pos2 = pos_dict2[i]
-                        
-                        results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][aligned1_seq[i]][qual[i]] += 1
+                    chrom1 = sam1.getrname(aligned1.tid)
+                    pos1 = pos_dict1[i]      
+                    chrom2 = sam2.getrname(aligned2.tid)
+                    pos2 = pos_dict2[i]
+                    
+                    results[(chrom1, chrom2, pos1, pos2, genome_seq1[i], genome_seq2[i])][aligned1_seq[i]][qual[i]] += 1
+                    
     else:
         
         # the main difference with paired end reads is that bowtie should output
@@ -208,15 +208,13 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                     a1_seq = a1.seq if type(aligned1.seq) == str else a1.seq.decode('UTF-8')
 
                     for i in range(0, len(a1.seq)):
-                                    
-                        if genome_seq1[i] == genome_seq2[i]:
-                            
-                            chrom1 = sam1.getrname(a1.tid)
-                            pos1 = pos_dict1[i]      
-                            chrom2 = sam2.getrname(a2.tid)
-                            pos2 = pos_dict2[i]
-                            
-                            results[(chrom1, chrom2, pos1, pos2, genome_seq1[i])][a1_seq[i]][qual[i]] += 1
+                                                                
+                        chrom1 = sam1.getrname(a1.tid)
+                        pos1 = pos_dict1[i]      
+                        chrom2 = sam2.getrname(a2.tid)
+                        pos2 = pos_dict2[i]
+                        
+                        results[(chrom1, chrom2, pos1, pos2, genome_seq1[i], genome_seq2[i])][a1_seq[i]][qual[i]] += 1
                 
             aligned_pair = next_tuple
         
@@ -229,7 +227,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
     with open(outfile_name, 'w') as outfile:
         
         print('#min_pileup_height={}, sample_every={}'.format(logfile_cutoff, sample_every), file=outfile)
-        print('chrom1\tchrom2\tpos1\tpos2\tgenome_seq(i)\tbase_count[A]\tbase_count[C]\tbase_count[G]\tbase_count[T]\tbase_count[N]', file=outfile)
+        print('chrom1\tchrom2\tpos1\tpos2\tgenome1_seq(i)\tgenome2_seq(i)\tbase_count[A]\tbase_count[C]\tbase_count[G]\tbase_count[T]\tbase_count[N]', file=outfile)
            
         for coordinate_pair, nuc_to_qual_dict in results.items():
             # iterate through genome coordinate pairs and their nested dictionaries
@@ -252,19 +250,19 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
             
             total_bases = sum([v for k,v in base_count.items()])
             cutoff = 0.75
+            chrom1, chrom2, pos1, pos2, genome1_seq_i, genome2_seq_i = coordinate_pair
             consensus = 'N'
     
             if total_bases >= 20:
-                # if more than 75% of reads agree on a base, and if the genomic sequence
+                # if more than 75% of reads agree on a base, and if both genomic sequences
                 # in that position is that same base, then it is the consensus.       
                 for base, count in base_count.items():
-                    if count > cutoff * total_bases and base == coordinate_pair[4]:
+                    if count > cutoff * total_bases and base == genome1_seq_i and base == genome2_seq_i:
                         consensus = base
                                 
-            chrom1, chrom2, pos1, pos2, genome_seq_i = coordinate_pair
             if total_bases >= logfile_cutoff:
-                log_msg = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(chrom1, chrom2,
-                pos1, pos2, genome_seq_i, base_count['A']+base_count['a'], base_count['C']+base_count['c'],
+                log_msg = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(chrom1, chrom2,
+                pos1, pos2, genome1_seq_i, genome2_seq_i, base_count['A']+base_count['a'], base_count['C']+base_count['c'],
                 base_count['G']+base_count['g'],base_count['T']+base_count['t'], base_count['N']+base_count['n'])
                 print(log_msg, file=outfile)
             
