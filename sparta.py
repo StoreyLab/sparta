@@ -22,6 +22,7 @@ Run the program without arguments to see the description of optional arguments
 
 '''
 
+#imports
 import argparse
 from compatibility import compatibility_dict
 from compatibility import izip
