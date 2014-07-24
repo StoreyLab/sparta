@@ -16,7 +16,7 @@ other. This program sorts the reads based on the errors to each genome.
 '''
 '''
 COMMAND LINE USAGE:
-python2 SeqSorter.py <samfile1> <samfile2> <optional arguments>
+python2 sparta.py <samfile1> <samfile2> <optional arguments>
 
 Run the program without arguments to see the description of optional arguments
 
@@ -28,7 +28,7 @@ from compatibility import compatibility_dict
 from compatibility import izip
 from compatibility import rev_comp
 from copy import copy
-import estimateErrorFreq
+import estimate_error_freq
 import itertools
 import math
 import multiprocessing as mp
@@ -38,7 +38,7 @@ import re
 import sys
 import time
 
-# parse SeqSorter program input.
+# parse sparta program input.
 def parseargs():
     
     parser = argparse.ArgumentParser(description=desc)
@@ -50,7 +50,7 @@ def parseargs():
     parser.add_argument('-n1', '--name1', nargs='?', type = str, help='name for genome 1 (reference for samfile 1)', default='genome1')
     parser.add_argument('-n2', '--name2', nargs='?', type = str, help='name for genome 2 (reference for samfile 2)', default='genome2')
     # various other parameters
-    parser.add_argument('-o', '--output_dir', nargs='?', type = str, help='directory to write output to', default='output/')
+    parser.add_argument('-o', '--output_dir', nargs='?', type = str, help='directory to write output to', default='output')
     parser.add_argument('-s1', '--sorted_sam1', nargs='?', type = str, help='file to write sorted samfile for genome1', default=None)
     parser.add_argument('-s2', '--sorted_sam2', nargs='?', type = str, help='file to write sorted samfile for genome2', default=None)
     parser.add_argument('-p', '--processes', nargs='?', type = int, help='number of processes to use for sorting step, default = number of CPU cores available', default=mp.cpu_count())
@@ -569,8 +569,9 @@ def merge_sorters(sorter_list):
 # and samfile2 in an interleaved fashion
 def sort_samfiles(samfile1, samfile2, paired_end=False, genome1_name='genome1',
                   genome2_name='genome2', num_processes=mp.cpu_count(), estimate_error_prob=False,
-                  genome1_prior=0.5, posterior_cutoff=0.9, output_dir='output/',
-                  sorted_sam1='output/genome1_sorted.sam', sorted_sam2='output/genome2_sorted.sam', quiet=False):
+                  genome1_prior=0.5, posterior_cutoff=0.9, output_dir='output',
+                  sorted_sam1=os.path.join('output','genome1_sorted.sam'),
+                  sorted_sam2=os.path.join('output','genome2_sorted.sam'), quiet=False):
     
     # Start timer
     t1 = time.time()
@@ -582,7 +583,7 @@ def sort_samfiles(samfile1, samfile2, paired_end=False, genome1_name='genome1',
     # random mismatch for each phred score.
     if estimate_error_prob:
         pileup_logfile = os.path.join(output_dir, 'pileup_counts')
-        mismatch_prob_dict, mismatch_prob_total_values = estimateErrorFreq.create_mismatch_prob_dict(samfile1, samfile2,
+        mismatch_prob_dict, mismatch_prob_total_values = estimate_error_freq.create_mismatch_prob_dict(samfile1, samfile2,
                                                                                                      genome1_name, genome2_name,
                                                                                                      pileup_logfile, paired_end)
     else:
@@ -592,7 +593,7 @@ def sort_samfiles(samfile1, samfile2, paired_end=False, genome1_name='genome1',
     if paired_end == False:
         # If in single read mode, perform rudimentary test for paired end reads.
         # if first two reads have same qname attribute, print a warning that the reads
-        # are likely paired end but SeqSorter mode is single read
+        # are likely paired end but sparta mode is single read
         paired_end_test_ix = 0
         prev_qname = None
         test_sam = pysam.Samfile(samfile1)

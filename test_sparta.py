@@ -13,7 +13,8 @@ import unittest
 import filecmp
 import math
 import os
-import SeqSorter
+import shutil
+import sparta
 import pysam
 
 # take a sequence, quality string, and MD string and return an aligned_read object
@@ -31,7 +32,7 @@ class test_matched_prob(unittest.TestCase):
     # where x was obtained from 'dec' column in the ascii table at http://www.asciitable.com/
     
     def setUp(self):
-        self.sorter = SeqSorter.multimapped_read_sorter()
+        self.sorter = sparta.multimapped_read_sorter()
     
     def test_F(self):
         prob = self.sorter.log10_matched_base_prob[70]
@@ -53,7 +54,7 @@ class test_mismatched_prob(unittest.TestCase):
     # where x was obtained from the 'dec' column ascii table at http://www.asciitable.com/
     
     def setUp(self):
-        self.sorter = SeqSorter.multimapped_read_sorter()
+        self.sorter = sparta.multimapped_read_sorter()
     
     def test_F(self):
         prob = self.sorter.log10_mismatched_base_prob[70]
@@ -72,7 +73,7 @@ class test_mismatched_prob(unittest.TestCase):
 class test_aligned_read_prob(unittest.TestCase):
     
     def setUp(self):
-        self.sorter = SeqSorter.multimapped_read_sorter()
+        self.sorter = sparta.multimapped_read_sorter()
 
     # test values were hand-computed using wolfram alpha
 
@@ -141,7 +142,7 @@ class test_aligned_read_prob(unittest.TestCase):
 class test_untangle(unittest.TestCase):
     
     def setUp(self):
-        self.sorter = SeqSorter.multimapped_read_sorter()
+        self.sorter = sparta.multimapped_read_sorter()
     
     # variable to hold prob_genome1 in return result.
     NIL = 0.0
@@ -206,13 +207,13 @@ class test_untangle(unittest.TestCase):
     # a slight dip in quality then the by severely loosening the posterior
     # cutoff then the result should be genome1
     def test_loosened_posterior_cutoff(self):
-        self.sorter = SeqSorter.multimapped_read_sorter(posterior_cutoff=0.7)
+        self.sorter = sparta.multimapped_read_sorter(posterior_cutoff=0.7)
         read1 = read_gen('AAGCAAAAAA','FFAAFFFFFF','2A0A6')
         read2 = read_gen('AAAAAACTAA','FFAAFFFFFF','6A0A2')
         result, NIL, NIL2 = self.sorter.untangle_two_mappings(read1, read2)
         self.assertTrue(result == 'classified1')
 
-# test that the same result is obtained when SeqSorter is run in single core
+# test that the same result is obtained when sparta is run in single core
 # (no child processes) mode and multiprocessing mode
 class test_multiprocessing(unittest.TestCase):
     
@@ -223,27 +224,30 @@ class test_multiprocessing(unittest.TestCase):
     # test single reads on a small (~10K lines) single-read file
     def test_single_reads(self):
 
-        single1 = 'unit_test/data/single_reads_genome1.sam'
-        single2 = 'unit_test/data/single_reads_genome2.sam'
+        single1 = os.path.join('unit_test','data','single_reads_genome1.sam')
+        single2 = os.path.join('unit_test','data','single_reads_genome2.sam')
+        
+        out_dir = os.path.join('unit_test','output')        
+        files_to_check = ['sorted1.sam', 'sorted2.sam', 'supplementary_output.txt']
         
         # no multiprocessing
-        SeqSorter.sort_samfiles(single1, single2, num_processes=1, output_dir='unit_test/output/no_mp',
-                      sorted_sam1='unit_test/output/no_mp/sorted1.sam', sorted_sam2='unit_test/output/no_mp/sorted2.sam', quiet=True)
+        sparta.sort_samfiles(single1, single2, num_processes=1, output_dir=os.path.join(out_dir, 'no_mp'),
+                      sorted_sam1=os.path.join(out_dir,'no_mp','sorted1.sam'),sorted_sam2=os.path.join(out_dir,'no_mp','sorted2.sam'), quiet=True)
         
         # processes = cpu_count
-        SeqSorter.sort_samfiles(single1, single2, output_dir='unit_test/output/mp',
-                      sorted_sam1='unit_test/output/mp/sorted1.sam', sorted_sam2='unit_test/output/mp/sorted2.sam', quiet=True)
+        sparta.sort_samfiles(single1, single2, output_dir=os.path.join(out_dir,'mp'),
+                      sorted_sam1=os.path.join(out_dir,'mp','sorted1.sam'), sorted_sam2=os.path.join(out_dir,'mp','sorted2.sam'), quiet=True)
 
         # processes = 10
-        SeqSorter.sort_samfiles(single1, single2, num_processes=10, output_dir='unit_test/output/mp10',
-                      sorted_sam1='unit_test/output/mp10/sorted1.sam', sorted_sam2='unit_test/output/mp10/sorted2.sam', quiet=True)
+        sparta.sort_samfiles(single1, single2, num_processes=10, output_dir=os.path.join(out_dir,'mp10'),
+                      sorted_sam1=os.path.join(out_dir,'mp10','sorted1.sam'), sorted_sam2=os.path.join(out_dir,'mp10','sorted2.sam'), quiet=True)
                       
-        match, mismatch, errors = filecmp.cmpfiles('unit_test/output/no_mp', 'unit_test/output/mp',
-                                                   common=['sorted1.sam', 'sorted2.sam', 'supplementary_output.txt'])
+        match, mismatch, errors = filecmp.cmpfiles(os.path.join(out_dir,'no_mp'), os.path.join(out_dir,'mp'),
+                                                   common=files_to_check)
                                                    
-        match2, mismatch2, errors2 = filecmp.cmpfiles('unit_test/output/no_mp', 'unit_test/output/mp10',
-                                                      common=['sorted1.sam', 'sorted2.sam', 'supplementary_output.txt'])
-        
+        match2, mismatch2, errors2 = filecmp.cmpfiles(os.path.join(out_dir,'no_mp'), os.path.join(out_dir,'mp10'),
+                                                      common=files_to_check)
+
         # check that output was created, and no files mismatched, and no errors occured
         assert match != []
         assert mismatch == []
@@ -253,31 +257,36 @@ class test_multiprocessing(unittest.TestCase):
         assert errors2 == []
         
         # clean up
-        os.system('rm -rf unit_test/output/*')
+        shutil.rmtree(out_dir)
+        os.makedirs(out_dir)
+
 
     # test on a small (~10K lines) paired-end read file
     def test_paired_end_reads(self):
         
-        single1 = 'unit_test/data/paired_end_reads_genome1.sam'
-        single2 = 'unit_test/data/paired_end_reads_genome2.sam'
+        single1 = os.path.join('unit_test','data','paired_end_reads_genome1.sam')
+        single2 = os.path.join('unit_test','data','paired_end_reads_genome2.sam')
+        
+        out_dir = os.path.join('unit_test','output')        
+        files_to_check = ['sorted1.sam', 'sorted2.sam', 'supplementary_output.txt']
         
         # no multiprocessing
-        SeqSorter.sort_samfiles(single1, single2, paired_end=True, num_processes=1, output_dir='unit_test/output/no_mp',
-                      sorted_sam1='unit_test/output/no_mp/sorted1.sam', sorted_sam2='unit_test/output/no_mp/sorted2.sam', quiet=True)
+        sparta.sort_samfiles(single1, single2, paired_end=True, num_processes=1, output_dir=os.path.join(out_dir, 'no_mp'),
+                      sorted_sam1=os.path.join(out_dir,'no_mp','sorted1.sam'),sorted_sam2=os.path.join(out_dir,'no_mp','sorted2.sam'), quiet=True)
         
         # processes = cpu_count
-        SeqSorter.sort_samfiles(single1, single2, paired_end=True, output_dir='unit_test/output/mp',
-                      sorted_sam1='unit_test/output/mp/sorted1.sam', sorted_sam2='unit_test/output/mp/sorted2.sam', quiet=True)
+        sparta.sort_samfiles(single1, single2, paired_end=True, output_dir=os.path.join(out_dir,'mp'),
+                      sorted_sam1=os.path.join(out_dir,'mp','sorted1.sam'), sorted_sam2=os.path.join(out_dir,'mp','sorted2.sam'), quiet=True)
 
         # processes = 10
-        SeqSorter.sort_samfiles(single1, single2, paired_end=True, num_processes=10, output_dir='unit_test/output/mp10',
-                      sorted_sam1='unit_test/output/mp10/sorted1.sam', sorted_sam2='unit_test/output/mp10/sorted2.sam', quiet=True)
+        sparta.sort_samfiles(single1, single2, paired_end=True, num_processes=10, output_dir=os.path.join(out_dir,'mp10'),
+                      sorted_sam1=os.path.join(out_dir,'mp10','sorted1.sam'), sorted_sam2=os.path.join(out_dir,'mp10','sorted2.sam'), quiet=True)
                       
-        match, mismatch, errors = filecmp.cmpfiles('unit_test/output/no_mp', 'unit_test/output/mp',
-                                                   common=['sorted1.sam', 'sorted2.sam', 'supplementary_output.txt'])
+        match, mismatch, errors = filecmp.cmpfiles(os.path.join(out_dir,'no_mp'), os.path.join(out_dir,'mp'),
+                                                   common=files_to_check)
                                                    
-        match2, mismatch2, errors2 = filecmp.cmpfiles('unit_test/output/no_mp', 'unit_test/output/mp10',
-                                                      common=['sorted1.sam', 'sorted2.sam', 'supplementary_output.txt'])
+        match2, mismatch2, errors2 = filecmp.cmpfiles(os.path.join(out_dir,'no_mp'), os.path.join(out_dir,'mp10'),
+                                                      common=files_to_check)
 
         # check that output was created, and no files mismatched, and no errors occured
         assert match != []
@@ -288,7 +297,8 @@ class test_multiprocessing(unittest.TestCase):
         assert errors2 == []
         
         # clean up
-        os.system('rm -rf unit_test/output/*')
+        shutil.rmtree(out_dir)
+        os.makedirs(out_dir)
     
 if __name__ == '__main__':
 

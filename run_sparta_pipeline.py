@@ -42,4 +42,4 @@ for fastq in input_files:
     name = fastq[:-6]
     out = os.path.join('all_sample_analysis/out', name)
     err = os.path.join('all_sample_analysis/err',name)
-    os.system('qsub -o {} -e {} -cwd python runBowtieSeqsort.py {}'.format(out, err, fastq))
+    os.system('qsub -o {} -e {} -cwd python run_bowtie_sparta.py {}'.format(out, err, fastq))
