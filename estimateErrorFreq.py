@@ -77,8 +77,8 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
     results = compatibility_dict(lambda: compatibility_dict(lambda: compatibility_dict(int)))
     
     i = 0
-    logfile_cutoff = 0 # 20
-    sample_every = 1 # 10
+    logfile_cutoff = 20
+    sample_every = 10
     
     if not paired_end:
         
