@@ -201,7 +201,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
             chrom1, chrom2, pos1, pos2, genome1_seq_i, genome2_seq_i = coordinate_pair
             consensus = 'N'
     
-            if total_bases >= 20:
+            if total_bases >= pileup_height:
                 # if more than 75% of reads agree on a base, and if both genomic sequences
                 # in that position is that same base, then it is the consensus.       
                 for base, count in base_count.items():
