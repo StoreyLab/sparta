@@ -26,7 +26,6 @@ Run the program without arguments to see the description of optional arguments
 import argparse
 from compatibility import compatibility_dict
 from compatibility import izip
-from compatibility import rev_comp
 from copy import copy
 import estimate_error_freq
 import itertools
@@ -37,6 +36,7 @@ import pysam
 import re
 import sys
 import time
+from util import fix_read_mate_order
 
 # parse sparta program input.
 def parseargs():
@@ -55,6 +55,8 @@ def parseargs():
     parser.add_argument('-s2', '--sorted_sam2', nargs='?', type = str, help='file to write sorted samfile for genome2', default=None)
     parser.add_argument('-p', '--processes', nargs='?', type = int, help='number of processes to use for sorting step, default = number of CPU cores available', default=mp.cpu_count())
     parser.add_argument('-e', '--estimate_err', nargs='?', type = int, help='set this flag to calculate actual random mismatch probabilities for more accurate mapping. WARNING: very slow', const=1)
+    parser.add_argument('-ph', '--pileup_height', nargs='?', type = int, help='if estimate_err is True, specify minimum height of read pileup to consider, default = 20', default=20)
+    parser.add_argument('-se', '--sample_every', nargs='?', type = int, help='if estimate_err is True, specify N such that estimate_error_freq only samples every N reads, default = 10', default=10)
     parser.add_argument('-gp', '--genome1_prior', nargs='?', type = float, help='prior probability that a read belongs to genome1', default=0.5)
     parser.add_argument('-pc', '--posterior_cutoff', nargs='?', type = float, help='lower-bound cutoff for probability that a read belongs to a genome for it to be classified as that genome', default=0.9)
     parser.add_argument('-q', '--quiet', nargs='?', type = int, help='set this flag to supress writing final counts to stdout (default: False)', const=1)
@@ -165,6 +167,11 @@ class multimapped_read_sorter():
                 #this is where we should handle deletions
                 pass
                 
+            elif 'N' in curr_err or 'n' in curr_err:
+                # any base counts as a match to an N on the reference
+                total += self.log10_matched_base_prob[qual[seq_ix]]
+                seq_ix += 1
+
             # step through mismatched bases and sum log10 probabilities of that mismatch occuring
             else:
                 total += self.log10_mismatched_base_prob[qual[seq_ix]]                
@@ -223,6 +230,16 @@ class multimapped_read_sorter():
         
         ix = 0
         
+        n_regex = re.compile('\d[nN]\d')
+        def count_errors(aligned_read):
+            if not aligned_read.is_unmapped:               
+                err = re.findall(self.MD_REGEX, aligned_read.opt("MD"))
+                len_err = len(err) - len(re.findall(n_regex, aligned_read.opt("MD")))
+                assert len_err >= 0
+                return err, len_err
+            else:
+                return None, None
+                    
         if not self.paired_end: # default: single reads
                         
             for aligned1, aligned2 in izip(sam1, sam2):
@@ -233,10 +250,9 @@ class multimapped_read_sorter():
                 ix += 1
     
                 assert aligned1.qname == aligned2.qname
-                err1 = re.findall(self.MD_REGEX, aligned1.opt("MD")) if not aligned1.is_unmapped else None
-                err2 = re.findall(self.MD_REGEX, aligned2.opt("MD")) if not aligned2.is_unmapped else None                
-                num_err1 = len(err1) if err1 != None else None                
-                num_err2 = len(err2) if err2 != None else None
+                
+                err1, len_err1 = count_errors(aligned1)
+                err2, len_err2 = count_errors(aligned2)
                 
                 if aligned1.is_unmapped and aligned2.is_unmapped:
                     # the read does not map to either genome
@@ -248,23 +264,23 @@ class multimapped_read_sorter():
                     # the read maps to alignment1 but not alignment2; either junk or
                     # an unshared gene bw BY and RM
                     self.category_counter['match1'] += 1
-                    self.log(num_err1, 'NA', '1', 'mapped1', 1)
+                    self.log(len_err1, 'NA', '1', 'mapped1', 1)
                 
                 elif aligned1.is_unmapped and (not aligned2.is_unmapped):
                     # the read maps to alignment2 but not alignment1; either junk or
                     # an unshared gene bw BY and RM
                     self.category_counter['match2'] += 1
-                    self.log('NA', num_err2, '0', 'mapped2', 2)
+                    self.log('NA', len_err2, '0', 'mapped2', 2)
                 
                 elif err1 == err2:
                     # the read has the same errors to both genomes, so it is impossible
                     # to sort it one way or the other
                     self.category_counter['same_errors'] += 1
-                    self.log(num_err1, num_err2, '0.5', 'unclassified: same errors', 0)
+                    self.log(len_err1, len_err2, '0.5', 'unclassified: same errors', 0)
                 else:
                 
                     classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned1, aligned2)
-                    self.log(num_err1, num_err2, prob_genome1, classification, sort_fate)
+                    self.log(len_err1, len_err2, prob_genome1, classification, sort_fate)
                     self.category_counter[classification] += 1
                     
         else: # (if paired end reads)
@@ -292,63 +308,12 @@ class multimapped_read_sorter():
                     continue
                 ix += 1
                 
-                # qname field should match for all 4 alignedread objects
-                # because really it is 2 copies of the same read+mate pair
-                assert aligned1.qname == aligned2.qname
-                assert aligned1.qname == aligned1_mate.qname
-                assert aligned1_mate.qname == aligned2_mate.qname                
+                aligned1, aligned2, aligned1_mate, aligned2_mate = fix_read_mate_order(aligned1, aligned2, aligned1_mate, aligned2_mate)
                 
-                # The RNA reads in aligned1 might be flip-flopped
-                # (As in, aligned1 actually refers to aligned2_mate)
-                # in this case, switch aligned2 and aligned2_mate
-                                
-                if aligned1.is_reverse == aligned2.is_reverse:
-                    
-                    if aligned1.seq != aligned2.seq:
-                        # we have the mate instead
-                        # switch aligned2 with its mate
-                        temp = aligned2
-                        aligned2 = aligned2_mate
-                        aligned2_mate = temp
-                    
-                    if aligned1.is_reverse == aligned2.is_reverse:
-                        assert aligned1.seq == aligned2.seq
-                    else:
-                        assert rev_comp(aligned1.seq) == aligned2.seq
-                    
-                    if aligned1_mate.is_reverse == aligned2_mate.is_reverse:
-                        assert aligned1_mate.seq == aligned2_mate.seq
-                    else:
-                        assert rev_comp(aligned1_mate.seq) == aligned2_mate.seq
-                
-                else:
-                    # one read is reversed, need to revcomp one to see if equal                    
-                    
-                    aligned1_revcomp = rev_comp(aligned1.seq)
-                    
-                    if aligned1_revcomp != aligned2.seq:
-                        # we have the mate instead
-                        # switch aligned2 with its mate
-                        temp = aligned2
-                        aligned2 = aligned2_mate
-                        aligned2_mate = temp
-                    
-                    if aligned1.is_reverse == aligned2.is_reverse:
-                        assert aligned1.seq == aligned2.seq
-                    else:
-                        assert aligned1_revcomp == aligned2.seq
-                    
-
-                    if aligned1_mate.is_reverse == aligned2_mate.is_reverse:
-                        assert aligned1_mate.seq == aligned2_mate.seq
-                    else:
-                        assert rev_comp(aligned1_mate.seq) == aligned2_mate.seq
-
-
-                err_a1 = re.findall(self.MD_REGEX, aligned1.opt("MD")) if not aligned1.is_unmapped else None
-                err_a1_mate = re.findall(self.MD_REGEX, aligned1_mate.opt("MD")) if not aligned1_mate.is_unmapped else None
-                err_a2 = re.findall(self.MD_REGEX, aligned2.opt("MD")) if not aligned2.is_unmapped else None
-                err_a2_mate = re.findall(self.MD_REGEX, aligned2_mate.opt("MD")) if not aligned2_mate.is_unmapped else None
+                err_a1, len_err_a1 = count_errors(aligned1)
+                err_a1_mate, len_err_a1_mate = count_errors(aligned1_mate)
+                err_a2, len_err_a2 = count_errors(aligned2)
+                err_a2_mate, len_err_a2_mate = count_errors(aligned2_mate)
                 
                 if (aligned1.is_unmapped and aligned1_mate.is_unmapped and
                     aligned2.is_unmapped and aligned2_mate.is_unmapped):
@@ -362,16 +327,21 @@ class multimapped_read_sorter():
                     # genome1 has one hit
 
                     self.category_counter['match1'] += 2
-                    num_err1 = len(err_a1) if err_a1 != None else len(err_a1_mate)
-                    self.log(num_err1, 'NA', '1', 'mapped1', 1)
+                    if err_a1 != None:
+                        self.log(len_err_a1, 'NA', '1', 'mapped1', 1)
+                    else:
+                        self.log(len_err_a1_mate, 'NA', '1', 'mapped1', 1)
                     
                 elif (aligned1.is_unmapped and aligned1_mate.is_unmapped and
                       aligned2.is_unmapped != aligned2_mate.is_unmapped):
                     # genome2 has one hit
+                      
                     self.category_counter['match2'] += 2
-                    num_err2 = len(err_a2) if err_a2 != None else len(err_a2_mate)
-                    self.log('NA', num_err2, '0', 'mapped2', 2)
-                
+                    if err_a2 != None:
+                        self.log('NA', len_err_a2, '0', 'mapped2', 2)
+                    else:
+                        self.log('NA', len_err_a2_mate, '0', 'mapped2', 2)
+                        
                 elif (aligned1.is_unmapped != aligned1_mate.is_unmapped and
                       aligned2.is_unmapped != aligned2_mate.is_unmapped):
                     
@@ -382,14 +352,14 @@ class multimapped_read_sorter():
                         # sort the mate based on sorting of read
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned1, aligned2)
                         self.category_counter[classification] += 2
-                        self.log(len(err_a1), len(err_a2), prob_genome1, classification, sort_fate)
+                        self.log(len_err_a1, len_err_a2, prob_genome1, classification, sort_fate)
                         
                     elif not aligned1_mate.is_unmapped and not aligned2_mate.is_unmapped:
                         # the read was unmapped to both but its mate mapped to both
                         # sort the read based on sorting the mate                    
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned1_mate, aligned2_mate)
                         self.category_counter[classification] += 2
-                        self.log(len(err_a1_mate), len(err_a2_mate), prob_genome1, classification, sort_fate)
+                        self.log(len_err_a1_mate, len_err_a2_mate, prob_genome1, classification, sort_fate)
                         
                     else:
                         # read mapped uniquely to one genome, but mate pair mapped
@@ -397,17 +367,16 @@ class multimapped_read_sorter():
                         self.log('NA', 'NA', 'NA', 'unmapped', 0)
                         self.category_counter['unmapped'] += 2
 
-
                 elif (not aligned1.is_unmapped and not aligned1_mate.is_unmapped and
                       aligned2.is_unmapped and aligned2_mate.is_unmapped):
                     # alignment1 mapped both, alignment2 mapped none
-                    self.log(len(err_a1)+len(err_a1_mate), 'NA', 1, 'mapped1', 1)
+                    self.log(len_err_a1+len_err_a1_mate, 'NA', 1, 'mapped1', 1)
                     self.category_counter['match1'] += 2
 
                 elif (aligned1.is_unmapped and aligned1_mate.is_unmapped and
                       not aligned2.is_unmapped and not aligned2_mate.is_unmapped):
                     # alignment2 mapped both, alignment1 mapped none
-                    self.log('NA', len(err_a2)+len(err_a2_mate), 0, 'mapped2', 2)
+                    self.log('NA', len_err_a2+len_err_a2_mate, 0, 'mapped2', 2)
                     self.category_counter['match2'] += 2
 
                 elif (not aligned1.is_unmapped and not aligned1_mate.is_unmapped and
@@ -416,12 +385,12 @@ class multimapped_read_sorter():
                     sort_fate = 0
                     if aligned2.is_unmapped:
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned1_mate, aligned2_mate)
-                        self.log(len(err_a1_mate), len(err_a2_mate), prob_genome1, classification, sort_fate)
+                        self.log(len_err_a1_mate, len_err_a2_mate, prob_genome1, classification, sort_fate)
                         self.category_counter[classification] += 2
 
                     else:
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned1, aligned2)
-                        self.log(len(err_a1), len(err_a2), prob_genome1, classification, sort_fate)
+                        self.log(len_err_a1, len_err_a2, prob_genome1, classification, sort_fate)
                         self.category_counter[classification] += 2
 
                 elif (aligned1.is_unmapped != aligned1_mate.is_unmapped and
@@ -431,24 +400,25 @@ class multimapped_read_sorter():
 
                     if aligned1.is_unmapped:
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned2_mate, aligned1_mate)
-                        self.log(len(err_a1_mate), len(err_a2_mate), prob_genome1, classification, sort_fate)
+                        self.log(len_err_a1_mate, len_err_a2_mate, prob_genome1, classification, sort_fate)
                         self.category_counter[classification] += 2
 
                     else:
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned2, aligned1)
-                        self.log(len(err_a1), len(err_a2), prob_genome1, classification, sort_fate)
+                        self.log(len_err_a1, len_err_a2, prob_genome1, classification, sort_fate)
                         self.category_counter[classification] += 2
                         
                 elif (not aligned1.is_unmapped and not aligned1_mate.is_unmapped and
                       not aligned2.is_unmapped and not aligned2_mate.is_unmapped):
                     
+                    # both the read and its mate mapped to both genomes
                     if err_a1 == err_a2 and err_a1_mate == err_a2_mate:
                         self.category_counter['same_errors'] += 2
-                        self.log(len(err_a1) + len(err_a1_mate), len(err_a2) + len(err_a2_mate), '0.5', 'unclassified: same errors', 0)
+                        self.log(len_err_a1 + len_err_a1_mate, len_err_a2 + len_err_a2_mate, '0.5', 'unclassified: same errors', 0)
 
                     else:
                         classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned1, aligned2, aligned1_mate, aligned2_mate)
-                        self.log(len(err_a1) + len(err_a1_mate), len(err_a2) + len(err_a2_mate), prob_genome1, classification, sort_fate)
+                        self.log(len_err_a1 + len_err_a1_mate, len_err_a2 + len_err_a2_mate, prob_genome1, classification, sort_fate)
                         self.category_counter[classification] += 2
                     
                 else:
@@ -569,8 +539,8 @@ def merge_sorters(sorter_list):
 # and samfile2 in an interleaved fashion
 def sort_samfiles(samfile1, samfile2, paired_end=False, genome1_name='genome1',
                   genome2_name='genome2', num_processes=mp.cpu_count(), estimate_error_prob=False,
-                  genome1_prior=0.5, posterior_cutoff=0.9, output_dir='output',
-                  sorted_sam1=os.path.join('output','genome1_sorted.sam'),
+                  pileup_height=20, sample_every=10, genome1_prior=0.5, posterior_cutoff=0.9,
+                  output_dir='output', sorted_sam1=os.path.join('output','genome1_sorted.sam'),
                   sorted_sam2=os.path.join('output','genome2_sorted.sam'), quiet=False):
     
     # Start timer
@@ -585,7 +555,7 @@ def sort_samfiles(samfile1, samfile2, paired_end=False, genome1_name='genome1',
         pileup_logfile = os.path.join(output_dir, 'pileup_counts')
         mismatch_prob_dict, mismatch_prob_total_values = estimate_error_freq.create_mismatch_prob_dict(samfile1, samfile2,
                                                                                                      genome1_name, genome2_name,
-                                                                                                     pileup_logfile, paired_end)
+                                                                                                     pileup_logfile, paired_end, pileup_height, sample_every)
     else:
         mismatch_prob_dict = None
         mismatch_prob_total_values = None
@@ -708,6 +678,8 @@ if __name__ == '__main__':
     genome2_name = args.name2
     num_processes = args.processes
     estimate_error_prob = True if args.estimate_err else False
+    pileup_height = args.pileup_height
+    sample_every = args.sample_every
     genome1_prior = args.genome1_prior
     posterior_cutoff = args.posterior_cutoff
     output_dir = args.output_dir
@@ -719,4 +691,4 @@ if __name__ == '__main__':
     sorted_sam2 = args.sorted_sam2
     sorted_sam2 = sorted_sam2 if sorted_sam2 else os.path.join(output_dir, '{}_sorted.sam'.format(genome2_name))    
     
-    sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, num_processes, estimate_error_prob, genome1_prior, posterior_cutoff, output_dir, sorted_sam1, sorted_sam2, quiet)
+    sort_samfiles(samfile1, samfile2, paired_end, genome1_name, genome2_name, num_processes, estimate_error_prob, pileup_height, sample_every, genome1_prior, posterior_cutoff, output_dir, sorted_sam1, sorted_sam2, quiet)

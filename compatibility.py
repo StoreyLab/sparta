@@ -34,6 +34,6 @@ class compatibility_dict(collections.defaultdict):
 def rev_comp(inseq):
     
     if type(inseq) == str: # python 2.7
-        return str(Seq(inseq).reverse_complement())  
-    else: # pyton 2.7
+        return str(Seq(inseq).reverse_complement())
+    else: # pyton 3.4
         return bytes(str(Seq(inseq.decode(encoding='UTF-8')).reverse_complement()), encoding="UTF-8")

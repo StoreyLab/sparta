@@ -24,6 +24,7 @@ import pysam
 import re
 import sys
 import time
+from util import fix_read_mate_order
             
 # regex for the MD string that specifies errors from the reference.
 # more information about the MD string: page 7 of http://samtools.github.io/hts-specs/SAMv1.pdf
@@ -53,6 +54,7 @@ def create_genome_seq(aligned):
     genome_seq = list(copy.copy(aligned.seq)) if type(aligned.seq) == str else list(copy.copy(aligned.seq.decode('UTF-8')))
     
     # see samtools documentation for MD string
+    
     err = re.findall(MD_REGEX, aligned.opt("MD"))
     
     seq_ix = 0
@@ -66,20 +68,57 @@ def create_genome_seq(aligned):
             
             genome_seq[seq_ix] = curr_err
             seq_ix += 1
-            
-    return genome_seq 
+
+    return ''.join(genome_seq)
+
+def add_to_pileup_dict(sam1, sam2, aligned1, aligned2, pileup_dict):
     
-def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, outfile_name, paired_end):
+    assert aligned1.qname == aligned2.qname
+    
+    if not aligned1.is_unmapped and not aligned2.is_unmapped:
+        # both alignments mapped
+    
+        assert len(aligned1.seq) == len(aligned2.seq)
+        
+        same_strand = (aligned1.is_reverse == aligned2.is_reverse)
+            
+        pos_dict1 = dict(aligned1.aligned_pairs)
+        pos_dict2 = dict(aligned2.aligned_pairs)
+            
+        qual1 = bytearray(aligned1.qual)
+        qual2 = bytearray(aligned2.qual) if same_strand else bytearray(aligned2.qual)[::-1]
+        
+        genome_seq1 = create_genome_seq(aligned1)
+        genome_seq2 = create_genome_seq(aligned2) if same_strand else rev_comp(create_genome_seq(aligned2))
+        
+        # The UTF-8 stuff is Python 3 shenanigans (Py3 aligned.seqs are bytearrays, != strings)                
+        aligned1_seq = aligned1.seq if type(aligned1.seq) == str else aligned1.seq.decode('UTF-8')
+        aligned2_seq_temp = aligned2.seq if same_strand else rev_comp(aligned2.seq)
+        aligned2_seq = aligned2_seq_temp if type(aligned2_seq_temp) == str else aligned2_seq_temp.decode('UTF-8')
+        
+        assert aligned1_seq == aligned2_seq
+        assert qual1 == qual2
+        
+        for i in range(0, len(aligned1.seq)):
+                        
+            chrom1 = sam1.getrname(aligned1.tid)
+            pos1 = pos_dict1[i]      
+            chrom2 = sam2.getrname(aligned2.tid)
+            # pos_dict2 is the only thing that wasn't reversed, so if not same strand
+            # we simply reverse how we index into it (len - i - 1) to go right-to-left
+            pos2 = pos_dict2[i] if same_strand else pos_dict2[len(aligned2.seq) - i - 1]
+            
+            pileup_dict[(chrom1, chrom2, pos1, pos2, genome_seq1[i], genome_seq2[i])][aligned1_seq[i]][qual1[i]] += 1
+
+def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, outfile_name, paired_end, pileup_height=20, sample_every=10):
     
     sam1 = pysam.Samfile(samfile1)
     sam2 = pysam.Samfile(samfile2)
     
-    results = compatibility_dict(lambda: compatibility_dict(lambda: compatibility_dict(int)))
+    pileup_dict = compatibility_dict(lambda: compatibility_dict(lambda: compatibility_dict(int)))
     
     i = 0
-    logfile_cutoff = 20
-    sample_every = 10
-    
+        
     if not paired_end:
         
         for aligned1, aligned2 in izip(sam1, sam2):
@@ -90,30 +129,8 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                 continue
             i += 1
             
-            assert aligned1.qname == aligned2.qname
-            
-            if not aligned1.is_unmapped and not aligned2.is_unmapped:
-                
-                assert len(aligned1.seq) == len(aligned2.seq)
-                
-                # both alignments mapped
-                pos_dict1 = dict(aligned1.aligned_pairs)
-                pos_dict2 = dict(aligned2.aligned_pairs)
-                
-                qual = bytearray(aligned1.qual)
-                genome_seq1 = create_genome_seq(aligned1)
-                genome_seq2 = create_genome_seq(aligned2)
-                
-                aligned1_seq = aligned1.seq if type(aligned1.seq) == str else aligned1.seq.decode('UTF-8')
-                for i in range(0, len(aligned1.seq)):
-                                
-                        
-                    chrom1 = sam1.getrname(aligned1.tid)
-                    pos1 = pos_dict1[i]      
-                    chrom2 = sam2.getrname(aligned2.tid)
-                    pos2 = pos_dict2[i]
-                    
-                    results[(chrom1, chrom2, pos1, pos2, genome_seq1[i], genome_seq2[i])][aligned1_seq[i]][qual[i]] += 1
+            add_to_pileup_dict(sam1, sam2, aligned1, aligned2, pileup_dict)
+
                     
     else:
         
@@ -138,84 +155,15 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                 i += 1
                 continue
             i += 1
-            
-            # qname field should match for all 4 alignedread objects
-            # because really it is 2 copies of the same read+mate pair
-            assert aligned1.qname == aligned2.qname
-            assert aligned1.qname == aligned1_mate.qname
-            assert aligned1_mate.qname == aligned2_mate.qname                
-            
-            # The RNA reads in aligned1 might be flip-flopped
-            # (As in, aligned1 actually refers to aligned2_mate)
-            # in this case, switch aligned2 and aligned2_mate
-                            
-            if aligned1.is_reverse == aligned2.is_reverse:
-                
-                if aligned1.seq != aligned2.seq:
-                    # we have the mate instead
-                    # switch aligned2 with its mate
-                    temp = aligned2
-                    aligned2 = aligned2_mate
-                    aligned2_mate = temp
-                
-                if aligned1.is_reverse == aligned2.is_reverse:
-                    assert aligned1.seq == aligned2.seq
-                else:
-                    assert rev_comp(aligned1.seq) == aligned2.seq
-                
-                if aligned1_mate.is_reverse == aligned2_mate.is_reverse:
-                    assert aligned1_mate.seq == aligned2_mate.seq
-                else:
-                    assert rev_comp(aligned1_mate.seq) == aligned2_mate.seq
-            
-            else:
-                # one read is reversed, need to revcomp one to see if equal                    
-                
-                aligned1_revcomp = rev_comp(aligned1.seq)
-                
-                if aligned1_revcomp != aligned2.seq:
-                    # we have the mate instead
-                    # switch aligned2 with its mate
-                    temp = aligned2
-                    aligned2 = aligned2_mate
-                    aligned2_mate = temp
-                
-                if aligned1.is_reverse == aligned2.is_reverse:
-                    assert aligned1.seq == aligned2.seq
-                else:
-                    assert aligned1_revcomp == aligned2.seq
-                
 
-                if aligned1_mate.is_reverse == aligned2_mate.is_reverse:
-                    assert aligned1_mate.seq == aligned2_mate.seq
-                else:
-                    assert rev_comp(aligned1_mate.seq) == aligned2_mate.seq
-                
+            aligned1, aligned2, aligned1_mate, aligned2_mate = fix_read_mate_order(aligned1, aligned2, aligned1_mate, aligned2_mate)
+            
+
             for a1, a2 in [(aligned1, aligned2),(aligned1_mate, aligned2_mate)]:
                 
-                if not a1.is_unmapped and not a2.is_unmapped:
-                    
-                    assert len(a1.seq) == len(a2.seq)
-                    
-                    # both alignments mapped
-                    pos_dict1 = dict(a1.aligned_pairs)
-                    pos_dict2 = dict(a2.aligned_pairs)
-                    
-                    qual = bytearray(a1.qual)
-                    genome_seq1 = create_genome_seq(a1)
-                    genome_seq2 = create_genome_seq(a2)
-                    
-                    a1_seq = a1.seq if type(aligned1.seq) == str else a1.seq.decode('UTF-8')
-
-                    for i in range(0, len(a1.seq)):
-                                                                
-                        chrom1 = sam1.getrname(a1.tid)
-                        pos1 = pos_dict1[i]      
-                        chrom2 = sam2.getrname(a2.tid)
-                        pos2 = pos_dict2[i]
-                        
-                        results[(chrom1, chrom2, pos1, pos2, genome_seq1[i], genome_seq2[i])][a1_seq[i]][qual[i]] += 1
-                
+                add_to_pileup_dict(sam1, sam2, a1, a2, pileup_dict)
+            
+            # skip the next pair because we already grabbed it as the mate
             aligned_pair = next_tuple
         
     sam1.close()
@@ -226,10 +174,10 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
         
     with open(outfile_name, 'w') as outfile:
         
-        print('#min_pileup_height={}, sample_every={}'.format(logfile_cutoff, sample_every), file=outfile)
+        print('#min_pileup_height={}, sample_every={}'.format(pileup_height, sample_every), file=outfile)
         print('chrom1\tchrom2\tpos1\tpos2\tgenome1_seq(i)\tgenome2_seq(i)\tbase_count[A]\tbase_count[C]\tbase_count[G]\tbase_count[T]\tbase_count[N]', file=outfile)
            
-        for coordinate_pair, nuc_to_qual_dict in results.items():
+        for coordinate_pair, nuc_to_qual_dict in pileup_dict.items():
             # iterate through genome coordinate pairs and their nested dictionaries
             
             # want to know: what is the consensus base at this coord pair?
@@ -260,7 +208,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
                     if count > cutoff * total_bases and base == genome1_seq_i and base == genome2_seq_i:
                         consensus = base
                                 
-            if total_bases >= logfile_cutoff:
+            if total_bases >= pileup_height:
                 log_msg = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(chrom1, chrom2,
                 pos1, pos2, genome1_seq_i, genome2_seq_i, base_count['A']+base_count['a'], base_count['C']+base_count['c'],
                 base_count['G']+base_count['g'],base_count['T']+base_count['t'], base_count['N']+base_count['n'])
@@ -298,6 +246,7 @@ def create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name, ou
 # main logic
 # call compare_mappings() on samfile1 and samfile2 from standard input 
 def main():
+    '''
     t1 = time.time()
     # get command line args
     args = parseargs()
@@ -307,12 +256,12 @@ def main():
     genome2_name = args.name2
     
     # compare mappings between samfiles
-    results = create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name)
+    pileup_dict = create_mismatch_prob_dict(samfile1, samfile2, genome1_name, genome2_name)
     
     t2 = time.time()
-    pprint(results)
+    pprint(pileup_dict)
     print('TOTAL TIME: {}'.format(t2-t1))
     return 0
-
+    '''
 if __name__ == '__main__':
     main()
