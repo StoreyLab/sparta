@@ -6,13 +6,12 @@ from __future__ import print_function
 Created on Mon Jun 16 10:56:22 2014
 
 @author: Peter Edge
-adapted from compare_mappings() in Emily Nelson's script snp_pipeline.py
 '''
 desc = '''
-This file contains the multimapped_read_sorter class, which can sort two SAM
-alignment files which map the same RNAseq reads to two different parental
-genomes. The RNAseq reads should map to either one parental allele type or the
-other. This program sorts the reads based on the errors to each genome.
+SPARTA takes two SAM format files that each map the same set of RNA reads to a different
+ancestral (or parental) genome. This program classifies each read to one of the
+ancestral alleles or deems it unclassifiable, based on the assumption that each
+read belongs to one of the two ancestral alleles.
 '''
 '''
 COMMAND LINE USAGE:
