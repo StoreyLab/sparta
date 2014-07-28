@@ -188,34 +188,47 @@ class multimapped_read_sorter():
     # return the name of the most likely genome and probability of genome1
     def untangle_two_mappings(self, aligned1, aligned2, aligned1_mate=None, aligned2_mate=None):
         
-        genome2_prior = 1.0 - self.genome1_prior
+        num_del1 = len(re.findall(self.DEL_REGEX, aligned1.opt('MD')))
+        num_del2 = len(re.findall(self.DEL_REGEX, aligned1.opt('MD')))
         
-        # probability of the read given that genome1 generated it
-        if not aligned1_mate: # single read
-            prob_read_genome1 = self.aligned_read_prob(aligned1)
-        else: # paired end read
-            prob_read_genome1 = self.aligned_read_prob(aligned1) * self.aligned_read_prob(aligned1_mate)
+        if num_del1 == num_del2:
             
-        # probabiltiy of the read given that genome2 generated it
-        if not aligned2_mate: # single read
-            prob_read_genome2 = self.aligned_read_prob(aligned2)
-        else: # paired end read
-            prob_read_genome2 = self.aligned_read_prob(aligned2) * self.aligned_read_prob(aligned2_mate)
+            genome2_prior = 1.0 - self.genome1_prior
+            
+            # probability of the read given that genome1 generated it
+            if not aligned1_mate: # single read
+                prob_read_genome1 = self.aligned_read_prob(aligned1)
+            else: # paired end read
+                prob_read_genome1 = self.aligned_read_prob(aligned1) * self.aligned_read_prob(aligned1_mate)
+                
+            # probabiltiy of the read given that genome2 generated it
+            if not aligned2_mate: # single read
+                prob_read_genome2 = self.aligned_read_prob(aligned2)
+            else: # paired end read
+                prob_read_genome2 = self.aligned_read_prob(aligned2) * self.aligned_read_prob(aligned2_mate)
+    
+            # apply baiyes rule: compute probability that each genome generated
+            # the read given our priors for genome1 and genome2
+            prob_genome1 = (prob_read_genome1 * self.genome1_prior /
+                            (prob_read_genome1 * self.genome1_prior + prob_read_genome2 * genome2_prior))
+                            
+            prob_genome2 = 1.0 - prob_genome1    
+    
+            if (prob_genome1 >= self.posterior_cutoff):
+                return 'classified1', prob_genome1, 1
+            elif (prob_genome2 >= self.posterior_cutoff):
+                return 'classified2', prob_genome1, 2
+            else:
+                return 'unclassified', prob_genome1, 0
 
-        # apply baiyes rule: compute probability that each genome generated
-        # the read given our priors for genome1 and genome2
-        prob_genome1 = (prob_read_genome1 * self.genome1_prior /
-                        (prob_read_genome1 * self.genome1_prior + prob_read_genome2 * genome2_prior))
-                        
-        prob_genome2 = 1.0 - prob_genome1    
-
-        if (prob_genome1 >= self.posterior_cutoff):
-            return 'classified1', prob_genome1, 1
-        elif (prob_genome2 >= self.posterior_cutoff):
-            return 'classified2', prob_genome1, 2
+        # for now, assume that more deletions is a dead giveaway
+        elif num_del1 < num_del2:
+            # less deletions in genome1
+            return 'classified1', 1, 1
         else:
-            return 'unclassified', prob_genome1, 0
-
+            # less deletions in genome2
+            return 'classified2', 0, 2
+            
     # UNTANGLE TWO SAMFILES
     # Given two samfile objects mapping the same RNAseq reads to different genomes,
     # sort each alignedread object to one genome or the other.
@@ -277,7 +290,7 @@ class multimapped_read_sorter():
                     self.category_counter['same_errors'] += 1
                     self.log(len_err1, len_err2, '0.5', 'unclassified: same errors', 0)
                 else:
-                
+                    
                     classification, prob_genome1, sort_fate = self.untangle_two_mappings(aligned1, aligned2)
                     self.log(len_err1, len_err2, prob_genome1, classification, sort_fate)
                     self.category_counter[classification] += 1
@@ -660,7 +673,13 @@ def sort_samfiles(samfile1, samfile2, paired_end=False, genome1_name='genome1',
     
         for line in combined_sorter.logs:
             print(line,file=verbose_file)
-        
+
+    # Print all the sort fates for easy access
+    sort_fate_filepath = os.path.join(output_dir, 'sort_fates.txt')
+    with open(sort_fate_filepath, 'w') as sort_fate_file:
+        for sort_fate in combined_sorter.sort_fates:
+            print(sort_fate, file=sort_fate_file)
+    
     # Print the total time
     t2 = time.time()
     if not quiet:
