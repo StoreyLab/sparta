@@ -16,10 +16,7 @@ def parseargs():
     parser.add_argument('name', nargs='?', type = str, help='path to samfile 1', default=sys.stdin)
 
     # default to help option. credit to unutbu: http://stackoverflow.com/questions/4042452/display-help-message-with-python-argparse-when-script-is-called-without-any-argu
-    if len(sys.argv) < 3:
-        parser.print_help()
-        sys.exit(1)
-
+    
     args = parser.parse_args()
     return args
 
@@ -55,7 +52,7 @@ with open (full_path, 'r') as inf:
             
         total += 1
     
-    with open(os.path.join('cutoff_plot_data', name)) as outf:
+    with open(os.path.join('cutoff_plot_data', name), 'w') as outf:
         for i in classified:
-            frac = classified[i]/total
+            frac = i/total
             print(frac, file=outf)
