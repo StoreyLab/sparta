@@ -189,5 +189,9 @@ and replace any instance of collections.defaultdict with compatibility\_dict. If
 \noindent
 5. In python 2, pysam alignedreads have a qual that is a string, whereas in python 3 it is a bytearray. My solution was to explicitly cast alignedread.qual to a byte array before use ensuring that whether the version was python 2 or 3, I could just treat it as a bytearray (indexing in returns 70 instead of 'F' if the quality is F in that spot, same as if ord() was called)
 
+\begin{equation*}
+Pr(miscall) = 10^\frac{Q}{-10}
+\end{equation*}
+
 
 \end{document}
