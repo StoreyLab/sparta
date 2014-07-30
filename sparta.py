@@ -189,7 +189,7 @@ class multimapped_read_sorter():
     def untangle_two_mappings(self, aligned1, aligned2, aligned1_mate=None, aligned2_mate=None):
         
         #num_del1 = len(re.findall(self.DEL_REGEX, aligned1.opt('MD')))
-        #num_del2 = len(re.findall(self.DEL_REGEX, aligned1.opt('MD')))
+        num_del2 = len(re.findall(self.DEL_REGEX, aligned1.opt('MD')))
         
         #if num_del1 == num_del2:
             
