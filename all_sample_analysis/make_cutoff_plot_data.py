@@ -52,7 +52,7 @@ for name in run_names:
         
         for i in range(0,54):
             
-            results[run_ix][i] = classified / total
+            results[run_ix][i] = classified[i] / total
 
     run_ix += 1
 
