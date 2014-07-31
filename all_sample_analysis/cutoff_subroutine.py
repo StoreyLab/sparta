@@ -19,9 +19,8 @@ def parseargs():
     args = parser.parse_args()
     return args
 
-cutoff_init = 0.5000000000001
-cutoffs = [cutoff_init + float(x)/100.0 for x in range(0,50)]
-cutoffs.extend([1.0 - 10**(-x) for x in list(np.arange(3, 10, 0.2))])
+cutoffs = [0.500000001]
+cutoffs.extend([1.0 - 10**(-x) for x in list(np.arange(0.4, 10, 0.2))])
 cutoffs.append(1.0)
 
 args = parseargs()
@@ -33,12 +32,12 @@ with open (full_path, 'r') as inf:
 
     header = inf.readline()
     
-    classified = [0.0]*86
+    classified = [0.0]*50
     total = 0.0
     
     for line in inf:
         
-        for i in range(0,54):
+        for i in range(0,50):
         
         
             elements = line.rstrip().split()
