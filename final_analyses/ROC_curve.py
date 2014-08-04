@@ -16,7 +16,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 filename = 'ROC_out'
-title = 'SPARTA ROC Curve: Simulated BY/RM Reads'
+title = 'Error Rate vs. Sensitivity: Simulated BY/RM Reads'
 
 err = []
 sens = []

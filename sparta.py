@@ -187,11 +187,6 @@ class multimapped_read_sorter():
     # given two aligned read objects mapping the same read to different genomes,
     # return the name of the most likely genome and probability of genome1
     def untangle_two_mappings(self, aligned1, aligned2, aligned1_mate=None, aligned2_mate=None):
-        
-        #num_del1 = len(re.findall(self.DEL_REGEX, aligned1.opt('MD')))
-        num_del2 = len(re.findall(self.DEL_REGEX, aligned1.opt('MD')))
-        
-        #if num_del1 == num_del2:
             
         genome2_prior = 1.0 - self.genome1_prior
         
@@ -220,15 +215,6 @@ class multimapped_read_sorter():
             return 'classified2', prob_genome1, 2
         else:
             return 'unclassified', prob_genome1, 0
-
-        # for now, assume that more deletions is a dead giveaway
-        #elif num_del1 < num_del2:
-            # less deletions in genome1
-        #    return 'classified1', 1, 1
-        #else:
-            # less deletions in genome2
-        #    return 'classified2', 0, 2
-          
           
     # UNTANGLE TWO SAMFILES
     # Given two samfile objects mapping the same RNAseq reads to different genomes,
