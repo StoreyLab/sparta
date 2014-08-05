@@ -99,7 +99,7 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
 
             quals = [bytearray(read.qual) if not read.is_reverse else bytearray(read.qual)[::-1] for aligned_read in aligned_read_set]
             seqs_temp = [read.seq if not read.is_reverse else rev_comp(read.seq) for read in aligned_read_set]
-            seqs = [read.seq if type(read.seq) == str else read.seq.decode('UTF-8') for read in seqs_temp]
+            seqs = [temp if type(temp) == str else temp.decode('UTF-8') for temp in seqs_temp]
             
             for q in quals:
                 assert q == quals[0]
@@ -257,7 +257,21 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
                 # from base1 to base2 at that qual
                 total_observations = quality_score_mismatch_counter[qual] + quality_score_match_counter[qual]
                 transition_prob_dict[(qual, base1, base2)] = quality_score_transition_matrix[qual][base1][base2] / (total_observations * 1.0)
+    
+    # For each phred, print observed probability of mismatch and number of bases observed in creating that probability
+    if mismatch_prob_dict and mismatch_prob_total_values:
+        
+        with open(os.path.join(output_dir, 'mismatch_prob_info.txt'), 'w') as outputfile:
             
+            for k in mismatch_prob_dict.keys():
+                print ('{}\t{}\t{}'.format(k,mismatch_prob_dict[k],mismatch_prob_total_values[k]), file=outputfile)
+
+        with open(os.path.join(output_dir, 'transition_prob_info.txt'), 'w') as outputfile:
+            
+            for k, v in transition_prob_dict.items():
+                qual, base1, base2 = k
+                print ('{}\t{}\t{}\t{}'.format(qual, base1, base2, v), file=outputfile)    
+    
     return mismatch_prob_dict, mismatch_prob_total_values, transition_prob_dict
 
 # main logic

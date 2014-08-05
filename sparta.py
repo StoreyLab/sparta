@@ -533,20 +533,7 @@ def sparta(samfiles, paired_end=False, genome_names=[],
     ############################################################################
     # PRINT OUTPUT : All printing occurs here
     ############################################################################
-    
-    # For each phred, print observed probability of mismatch and number of bases observed in creating that probability
-    if mismatch_prob_dict and mismatch_prob_total_values:
-        with open(os.path.join(output_dir, 'mismatch_prob_info.txt'), 'w') as outputfile:
-            
-            for k in mismatch_prob_dict.keys():
-                print ('{}\t{}\t{}'.format(k,mismatch_prob_dict[k],mismatch_prob_total_values[k]), file=outputfile)
-
-        with open(os.path.join(output_dir, 'transition_prob_info.txt'), 'w') as outputfile:
-            
-            for k, v in transition_prob_dict.items():
-                qual, base1, base2 = k
-                print ('{}\t{}\t{}\t{}'.format(qual, base1, base2, v), file=outputfile)
-    
+        
     # Write newly sorted Samfiles, one for each genome
     combined_separator.write_samfiles(separated_samfiles)
         
