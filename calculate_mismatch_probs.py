@@ -75,7 +75,7 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
     for read in aligned_read_set:
         assert read.qname == aligned_read_set[0].qname
     
-    if not False in [read.is_unmapped for read in aligned_read_set]:
+    if not True in [read.is_unmapped for read in aligned_read_set]:
         # all alignments mapped
         
         for read in aligned_read_set:
