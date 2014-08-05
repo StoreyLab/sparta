@@ -82,9 +82,15 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
             assert len(read.seq) == len(aligned_read_set[0].seq)
         
         # if aligned reads are reversed, we reverse them and hold on to that info.
-                        
+        
         pos_dicts = [dict(read.aligned_pairs) for read in aligned_read_set]
-        genome_seqs = [create_genome_seq(read) if not read.is_reverse else rev_comp(create_genome_seq(read)) for read in aligned_read_set]
+
+        try:
+            genome_seqs = [create_genome_seq(read) if not read.is_reverse else rev_comp(create_genome_seq(read)) for read in aligned_read_set]
+        except:
+            import pdb
+            pdb.set_trace()
+            
         qual = bytearray(aligned_read_set[0].qual) if not aligned_read_set[0].is_reverse else bytearray(aligned_read_set[0].qual)[::-1]
         seq_temp = aligned_read_set[0].seq if not aligned_read_set[0].is_reverse else rev_comp(aligned_read_set[0].seq)
         seq = seq_temp if type(seq_temp) == str else seq_temp.decode('UTF-8')
