@@ -54,7 +54,7 @@ def parseargs():
     parser.add_argument('-mp', '--mismatch_prob_inputfile', nargs='?', type = int, help='specify an existing file with mismatch probabilities per quality score for more accurate mapping.', default = None)
     parser.add_argument('-ph', '--pileup_height', nargs='?', type = int, help='if calculate_mismatches is True, specify minimum height of read pileup to consider, default = 20', default=20)
     parser.add_argument('-se', '--sample_every', nargs='?', type = int, help='if calculate_mismatches is True, specify N such that calculate_mismatch_probs only samples every N reads, default = 10', default=10)
-    parser.add_argument('-gp', '--genome_priors', nargs='+', type = float, help='list of prior probabilities that a read belongs to each genome', [])
+    parser.add_argument('-gp', '--genome_priors', nargs='+', type = float, help='list of prior probabilities that a read belongs to each genome', default=[])
     parser.add_argument('-pc', '--posterior_cutoff', nargs='?', type = float, help='lower-bound cutoff for probability that a read belongs to a genome for it to be classified as that genome', default=0.99)
     parser.add_argument('-q', '--quiet', nargs='?', type = int, help='set this flag to supress writing final counts to stdout (default: False)', const=1)
     
