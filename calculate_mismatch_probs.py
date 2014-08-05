@@ -115,7 +115,7 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
             positions = [d[i] if not a.is_reverse else d[len(seq) - i - 1] for d, a in zip(pos_dicts, aligned_read_set)]
             genome_seq_i = [g[i] for g in genome_seqs]
             
-            chrom_index_set = zip(chroms, positions, genome_seq_i)
+            chrom_index_set = tuple(zip(chroms, positions, genome_seq_i))
             
             pileup_dict[chrom_index_set][seq[i]][qual[i]] += 1
 
