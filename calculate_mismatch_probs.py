@@ -283,21 +283,7 @@ def main():
     args = parseargs()
     samfiles = args.samfiles
     output_dir = args.output_dir
-    mismatch_prob_dict, mismatch_prob_total_values, transition_prob_dict = create_mismatch_prob_dict(samfiles, output_dir)
-    
-    with open(os.path.join(output_dir, 'mismatch_prob_info.txt'), 'w') as outputfile:
-    
-        for k in mismatch_prob_dict.keys():
-            print ('{}\t{}\t{}'.format(k,mismatch_prob_dict[k],mismatch_prob_total_values[k]), file=outputfile)
-
-    with open(os.path.join(output_dir, 'transition_prob_info.txt'), 'w') as outputfile:
-        
-        for k, v in transition_prob_dict.items():
-            print ('{}\t{}'.format(k, v), file=outputfile)
-            
-    for k, v in transition_prob_dict.items():
-        qual, base1, base2 = k
-        print ('{}\t{}\t{}\t{}'.format(qual, base1, base2, v), file=outputfile)    
+    mismatch_prob_dict, mismatch_prob_total_values, transition_prob_dict = create_mismatch_prob_dict(samfiles, output_dir)  
     
     t2 = time.time()
     print('TOTAL TIME: {}'.format(t2-t1))
