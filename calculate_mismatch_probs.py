@@ -115,9 +115,9 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
             positions = [d[i] if not a.is_reverse else d[len(seq) - i - 1] for d, a in zip(pos_dicts, aligned_read_set)]
             genome_seq_i = [g[i] for g in genome_seqs]
             
-            chrom_index_set = tuple(zip(chroms, positions, genome_seq_i))
+            genomic_locs = tuple(zip(chroms, positions, genome_seq_i))
             
-            pileup_dict[chrom_index_set][seq[i]][qual[i]] += 1
+            pileup_dict[genomic_locs][seq[i]][qual[i]] += 1
 
 def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False, pileup_height=20, sample_every=10):
 
@@ -179,10 +179,10 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
 
     with open(os.path.join(output_dir, 'pileup_counts'), 'w') as outfile:
         
-        print('chrom1\tchrom2\tpos1\tpos2\tgenome1_seq(i)\tgenome2_seq(i)\tbase_count[A]\tbase_count[C]\tbase_count[G]\tbase_count[T]\tbase_count[N]', file=outfile)
+        print('genomic_coordinates\tbase_count[A]\tbase_count[C]\tbase_count[G]\tbase_count[T]\tbase_count[N]', file=outfile)
            
-        for coordinate_pair, nuc_to_qual_dict in pileup_dict.items():
-            # iterate through genome coordinate pairs and their nested dictionaries
+        for genomic_locs, nuc_to_qual_dict in pileup_dict.items():
+            # iterate through genome coordinates and their nested dictionaries
             
             # want to know: what is the consensus base at this coord pair?
             # keep a count of how many bases seen at this coord pair
@@ -202,19 +202,17 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
             
             total_bases = sum([v for k,v in base_count.items()])
             cutoff = 0.75
-            chrom1, chrom2, pos1, pos2, genome1_seq_i, genome2_seq_i = coordinate_pair
             consensus = 'N'
     
             if total_bases >= pileup_height:
                 # if more than 75% of reads agree on a base, and if both genomic sequences
                 # in that position is that same base, then it is the consensus.       
                 for base, count in base_count.items():
-                    if count > cutoff * total_bases and base == genome1_seq_i and base == genome2_seq_i:
+                    if count > cutoff * total_bases and False not in [base == loc[2] for loc in genomic_locs]:
                         consensus = base
                                 
             if total_bases >= pileup_height:
-                log_msg = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(chrom1, chrom2,
-                pos1, pos2, genome1_seq_i, genome2_seq_i, base_count['A']+base_count['a'], base_count['C']+base_count['c'],
+                log_msg = '{}\t{}\t{}\t{}\t{}\t{}'.format(genomic_locs, base_count['A']+base_count['a'], base_count['C']+base_count['c'],
                 base_count['G']+base_count['g'],base_count['T']+base_count['t'], base_count['N']+base_count['n'])
                 print(log_msg, file=outfile)
             
