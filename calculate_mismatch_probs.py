@@ -111,7 +111,7 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
         for i in range(0, len(seq)):
             
             # need (chrom, pos, genome_seq[i]) tuples for each aligned_read
-            chroms = [sam.getrname(a.tid) for sam, a in zip(sams, aligned_read_set)]
+            chroms = [sam.getrname(a.tid) for sam, a in izip(sams, aligned_read_set)]
             positions = [d[i] if not a.is_reverse else d[len(seq) - i - 1] for d, a in zip(pos_dicts, aligned_read_set)]
             genome_seq_i = [g[i] for g in genome_seqs]
             
@@ -124,7 +124,7 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    sams = (pysam.Samfile(i) for i in samfiles)
+    sams = tuple(pysam.Samfile(i) for i in samfiles)
     
     pileup_dict = compatibility_dict(lambda: compatibility_dict(lambda: compatibility_dict(int)))
             
@@ -211,7 +211,6 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
                     if count > cutoff * total_bases and False not in [base == loc[2] for loc in genomic_locs]:
                         consensus = base
                                 
-            if total_bases >= pileup_height:
                 log_msg = '{}\t{}\t{}\t{}\t{}\t{}'.format(genomic_locs, base_count['A']+base_count['a'], base_count['C']+base_count['c'],
                 base_count['G']+base_count['g'],base_count['T']+base_count['t'], base_count['N']+base_count['n'])
                 print(log_msg, file=outfile)
@@ -249,12 +248,12 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
         
         for base1, base_to_count_dict in base_dict.items():
             
-            for base2, count in base_to_count_dict:
+            for base2, count in base_to_count_dict.items():
                 
                 # we have a qual, base1, base2, and a count of transitions
                 # from base1 to base2 at that qual
                 total_observations = quality_score_mismatch_counter[qual] + quality_score_match_counter[qual]
-                transition_prob_dict[(qual, base1, base2)] = quality_score_transition_matrix[qual][base1][base2] / (total_observations * 1.0)
+                transition_prob_dict[(qual, base1, base2)] = count / (total_observations * 1.0)
     
     # For each phred, print observed probability of mismatch and number of bases observed in creating that probability
     if mismatch_prob_dict and mismatch_prob_total_values:

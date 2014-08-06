@@ -139,7 +139,7 @@ class multimapped_read_separator():
         if transition_prob_dict:
             
             self.log10_transition_prob_dict = {}
-            for k, v in transition_prob_dict.item():
+            for k, v in transition_prob_dict.items():
                 
                 self.log10_transition_prob_dict[k] = math.log10(v)
         else:
@@ -186,7 +186,7 @@ class multimapped_read_separator():
 
             # step through mismatched bases and sum log10 probabilities of that mismatch occuring
             else:
-                if self.log10_transition_prob_dict:
+                if (qual[seq_ix], curr_err, aligned.seq[seq_ix]) in self.log10_transition_prob_dict:
                     total += self.log10_transition_prob_dict[(qual[seq_ix], curr_err, aligned.seq[seq_ix])]
                 else:
                     total += self.log10_mismatched_base_prob[qual[seq_ix]]
@@ -549,7 +549,7 @@ def sparta(samfiles, paired_end=False, genome_names=[],
     posteriors_filepath = os.path.join(output_dir, 'posterior_probabilities')
     with open(posteriors_filepath, 'w') as posteriors_file:
         print('\t'.join(genome_names), file=posteriors_file)
-        for posterior_list in combined_separator.mismatch_logs:
+        for posterior_list in combined_separator.posterior_logs:
             print('\t'.join(str(x) for x in posterior_list),file=posteriors_file)
 
     # Print a file where each line contains the 'sort fate' for each alignment
