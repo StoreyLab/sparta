@@ -71,7 +71,7 @@ def create_genome_seq(aligned):
             genome_seq[seq_ix] = curr_err
             seq_ix += 1
 
-    return genome_seq.tostring()
+    return genome_seq
 
 def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
     
