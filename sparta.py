@@ -67,7 +67,7 @@ def parseargs():
     parser.add_argument('-se', '--sample_every', nargs='?', type = int, help='if calculate_mismatches is True, specify N such that calculate_mismatch_probs only samples every N reads, default = {}'.format(default_sample_every), default=default_sample_every)
     parser.add_argument('-g', '--genome_priors', nargs='+', type = float, help='list of prior probabilities that a read belongs to each genome', default=[])
     parser.add_argument('-pc', '--posterior_cutoff', nargs='?', type = float, help='lower-bound cutoff for probability that a read belongs to a genome for it to be classified as that genome. default: {}'.format(default_posterior_cutoff), default=default_posterior_cutoff)
-    parser.add_argument('-u', '--unmapped_probability', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read being unmapped (in the SAM) to its genome of origin. default = {}'.format(default_unmapped_probability), default=default_unmapped_probability)
+    parser.add_argument('-u', '--unmapped_read_prob', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read being unmapped (in the SAM) to its genome of origin. default = {}'.format(default_unmapped_probability), default=default_unmapped_probability)
     parser.add_argument('-q', '--quiet', nargs='?', type = int, help='set this flag to supress writing final counts to stdout (default: False)', const=1)
     
     # default to help option. credit to unutbu: http://stackoverflow.com/questions/4042452/display-help-message-with-python-argparse-when-script-is-called-without-any-argu
