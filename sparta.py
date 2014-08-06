@@ -37,6 +37,16 @@ import sys
 import time
 from util import fix_read_mate_order
 
+# set true for debugging purposes
+cautious = True 
+
+# default arguments
+default_pileup_height = 20
+default_sample_every = 10
+default_posterior_cutoff = 0.99
+default_unmapped_probability = 0.0001
+default_output_dir = 'output'
+
 # parse sparta program input.
 def parseargs():
 
@@ -47,15 +57,17 @@ def parseargs():
     # optional nicknames for the genomes that the samfiles map to (recommended)    
     parser.add_argument('-n', '--names', nargs='+', type = str, help='list of nicknames for genomes corresponding for samfile1,samfile2, etc.', default=[])
     # various other parameters
-    parser.add_argument('-o', '--output_dir', nargs='?', type = str, help='directory to write output to', default='output')
-    parser.add_argument('-ss', '--separated_samfiles', nargs='+', type = str, help='list of filenames to write separated (classified) sam outputs. default: outputdir/genome1_sorted.sam...', default=[])
-    parser.add_argument('-p', '--processes', nargs='?', type = int, help='number of processes to use for separation step, default = number of CPU cores available', default=mp.cpu_count())
+    parser.add_argument('-o', '--output_dir', nargs='?', type = str, help='directory to write output to', default=default_output_dir)
+    parser.add_argument('-ss', '--separated_samfiles', nargs='+', type = str, help='list of filenames to write separated (classified) sam outputs. default: outputdir/genome1_separated.sam...', default=[])
+    parser.add_argument('-pr', '--processes', nargs='?', type = int, help='number of processes to use for separation step, default = number of CPU cores available', default=mp.cpu_count())
     parser.add_argument('-c', '--calculate_mismatches', nargs='?', type = int, help='set this flag to calculate actual mismatch probabilities for more accurate mapping. WARNING: very slow', const=1)
-    parser.add_argument('-mp', '--mismatch_prob_inputfile', nargs='?', type = int, help='specify an existing file with mismatch probabilities per quality score for more accurate mapping.', default = None)
-    parser.add_argument('-ph', '--pileup_height', nargs='?', type = int, help='if calculate_mismatches is True, specify minimum height of read pileup to consider, default = 20', default=20)
-    parser.add_argument('-se', '--sample_every', nargs='?', type = int, help='if calculate_mismatches is True, specify N such that calculate_mismatch_probs only samples every N reads, default = 10', default=10)
-    parser.add_argument('-gp', '--genome_priors', nargs='+', type = float, help='list of prior probabilities that a read belongs to each genome', default=[])
-    parser.add_argument('-pc', '--posterior_cutoff', nargs='?', type = float, help='lower-bound cutoff for probability that a read belongs to a genome for it to be classified as that genome', default=0.99)
+    parser.add_argument('-m', '--mismatch_prob_inputfile', nargs='?', type = int, help='specify an existing file with mismatch probabilities per quality score for more accurate mapping.', default = None)
+    parser.add_argument('-t', '--transition_matrix_inputfile', nargs='?', type = int, help='specify file with transition matrix, either melted (rows like "A T 0.3") or unlabeled tab-delimited matrix with rows and columns ordered "A T G C N".', default = None)
+    parser.add_argument('-ph', '--pileup_height', nargs='?', type = int, help='if calculate_mismatches is True, specify minimum height of read pileup to consider, default = {}'.format(default_pileup_height), default=default_pileup_height)
+    parser.add_argument('-se', '--sample_every', nargs='?', type = int, help='if calculate_mismatches is True, specify N such that calculate_mismatch_probs only samples every N reads, default = {}'.format(default_sample_every), default=default_sample_every)
+    parser.add_argument('-g', '--genome_priors', nargs='+', type = float, help='list of prior probabilities that a read belongs to each genome', default=[])
+    parser.add_argument('-pc', '--posterior_cutoff', nargs='?', type = float, help='lower-bound cutoff for probability that a read belongs to a genome for it to be classified as that genome. default: {}'.format(default_posterior_cutoff), default=default_posterior_cutoff)
+    parser.add_argument('-u', '--unmapped_probability', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read being unmapped (in the SAM) to its genome of origin. default = {}'.format(default_unmapped_probability), default=default_unmapped_probability)
     parser.add_argument('-q', '--quiet', nargs='?', type = int, help='set this flag to supress writing final counts to stdout (default: False)', const=1)
     
     # default to help option. credit to unutbu: http://stackoverflow.com/questions/4042452/display-help-message-with-python-argparse-when-script-is-called-without-any-argu
@@ -87,25 +99,27 @@ class multimapped_read_separator():
     # the value in the qual string once it is represented as a byte array
      
     log10_matched_base_prob = [0]*127
-    log10_mismatched_base_prob = [0]*127
+    log10_mismatched_base_prob = {} # keys are (base1, base2, qual)
+    
     # hold the result of 
     # Store the results of separation in a string of chars    
     
     # The init method fills the log10 match/mismatch probability lists
     def __init__(self, samfiles=None, paired_end=False, mismatch_prob_dict=None,
-                 transition_prob_dict=None, genome_priors=None, posterior_cutoff=0.99, interleave_ix=0):
+                 transition_prob_dict=None, genome_priors=None, posterior_cutoff=0.99,
+                 unmapped_read_prob = 0.0001):
         
         # initialize variables        
         self.samfiles = samfiles
         self.paired_end = paired_end
         # assume even prior proababilties
         self.genome_priors = genome_priors if genome_priors else [1.0/len(samfiles)]*len(samfiles)
+        self.unmapped_read_prob = unmapped_read_prob
         self.posterior_cutoff = posterior_cutoff
         self.category_counter = compatibility_dict(int)
         self.sort_fates = []
         self.mismatch_logs = []
         self.posterior_logs = []
-        self.interleave_ix = 0
         # set up regexes
         # regex for the MD string that specifies errors from the reference.
         # more information about the MD string: page 7 of http://samtools.github.io/hts-specs/SAMv1.pdf
@@ -115,37 +129,27 @@ class multimapped_read_separator():
         # regex for N, for tracking ambiguous bases
         self.N_REGEX = re.compile('\d[nN]\d')
 
-
         # hardcode values for 33 since log10(0) gives an error
-        self.log10_matched_base_prob[33] = -float('Inf')
-        self.log10_mismatched_base_prob[33] = - 0.47712125471966244 # log10(3) == 0.47712125471966244
-        
+        self.log10_matched_base_prob[33] = - float('Inf')
+    
         # phred scores can be ascii 33-126
-        for i in range(34,127):
-            self.log10_matched_base_prob[i] = math.log10(1.0 - math.pow(10, (i - 33) * -0.1))
-            self.log10_mismatched_base_prob[i] = ((i - 33) * -0.1) - 0.47712125471966244 # log10(3) == 0.47712125471966244
+        for q in range(34,127):
+            if mismatch_prob_dict and q in mismatch_prob_dict and mismatch_prob_dict[q] != 1:
+                self.log10_matched_base_prob[q] = math.log10(1.0 - mismatch_prob_dict[q])
+            else:
+                self.log10_matched_base_prob[q] = math.log10(1.0 - math.pow(10, (q - 33) * -0.1))
 
-        # if mismatch probabilities have been computed empirically, use those
-        # to overwrite the defaults
-        if mismatch_prob_dict:
-
-                # overwrite the old, approximate values with empirically determined ones
-                for i in range(33,127):
-                    if i in mismatch_prob_dict:
-                        if mismatch_prob_dict[i] != 1:
-                            self.log10_matched_base_prob[i] = math.log10(1.0 - mismatch_prob_dict[i])
-                        self.log10_mismatched_base_prob[i] = math.log10(mismatch_prob_dict[i] / 3)
-
-        if transition_prob_dict:
-            
-            self.log10_transition_prob_dict = {}
-            for k, v in transition_prob_dict.items():
+        for base1, base2 in itertools.permutations(['A', 'T', 'G', 'C', 'N'], 2):
                 
-                self.log10_transition_prob_dict[k] = math.log10(v)
-        else:
-            self.log10_transition_prob_dict = None
-            
-
+                self.log10_mismatched_base_prob[(base1, base2, 33)] = - 0.47712125471966244 # log10(3) == 0.47712125471966244
+                for q in range(34,127):
+                    
+                    # if we have empirically calculated mismatch probabilities per quality scores, use those
+                    # likewise, if we have empirically calculated base transition probs then incorporate those
+                    log10_mismatch_prob = math.log10(mismatch_prob_dict[q]) if (mismatch_prob_dict and q in mismatch_prob_dict) else ((q - 33) * -0.1)
+                    log10_prob_trans = math.log10(transition_prob_dict[(base1, base2)]) if (transition_prob_dict and (base1, base2) in transition_prob_dict) else (- 0.47712125471966244)                    
+                    self.log10_mismatched_base_prob[(base1, base2, q)] = log10_mismatch_prob + log10_prob_trans
+                    
     # LOG
     # save strings that will later be written to the various output files
     def log(self, mismatch_list, posterior_list, sort_fate):
@@ -186,11 +190,7 @@ class multimapped_read_separator():
 
             # step through mismatched bases and sum log10 probabilities of that mismatch occuring
             else:
-                if (qual[seq_ix], curr_err, aligned.seq[seq_ix]) in self.log10_transition_prob_dict:
-                    total += self.log10_transition_prob_dict[(qual[seq_ix], curr_err, aligned.seq[seq_ix])]
-                else:
-                    total += self.log10_mismatched_base_prob[qual[seq_ix]]
-                    
+                total += self.log10_mismatched_base_prob[(curr_err, aligned.seq[seq_ix], qual[seq_ix])]
                 seq_ix += 1
 
         # step through the remaining matched bases
@@ -214,29 +214,21 @@ class multimapped_read_separator():
                 assert len_mismatches >= 0
                 mismatch_counts.append(len_mismatches)
             else:
-                mismatch_counts.append('NA')
+                mismatch_counts.append('NaN')
                 
         return mismatch_counts
 
 
-    def baiyes_classify(self, read_probs):
-        if read_probs == [0.0] * len(read_probs):
-            return 'unmapped', read_probs, 0
-
-        # all the priors where the read mapped else 0
-        sum_mapped_priors = sum([prior if prob else 0.0 for prob, prior in zip(read_probs, self.genome_priors)])
-        # correct the original priors for unmapped reads
-        corrected_priors = [prior / sum_mapped_priors if prob else 0.0 for prob, prior in zip(read_probs, self.genome_priors)]
-        assert sum(corrected_priors) == 1.0
+    def bayes_classify(self, read_probs):
         
-        # apply baiyes rule: compute probability that each genome generated
+        # apply bayes rule: compute probability that each genome generated
         # the read given our priors for each genome
-        baiyes_denom = sum([prob * prior for prob, prior in zip(read_probs, corrected_priors)])         
-        read_posterior_probs = [prob * prior / baiyes_denom for prob, prior in zip(read_probs, corrected_priors)]
+        bayes_denom = sum([prob * prior for prob, prior in zip(read_probs, self.genome_priors)])         
+        read_posterior_probs = [prob * prior / bayes_denom for prob, prior in zip(read_probs, self.genome_priors)]
         
         for i, posterior in enumerate(read_posterior_probs):
             if posterior > self.posterior_cutoff:
-                # add 1 because sort fate of 0 means unsorted
+                # add 1 because sort fate of 0 means unclassified
                 sort_fate = i + 1
                 return 'classified{}'.format(sort_fate), read_posterior_probs, sort_fate
         
@@ -249,52 +241,27 @@ class multimapped_read_separator():
     
         # probability of the read given that genome1 generated it
         if not aligned_read_mates: # single reads
-            read_probs = [self.aligned_read_prob(read) if not read.is_unmapped else 0.0 for read in aligned_reads]
-            classification, posterior_probs, sort_fate = self.baiyes_classify(read_probs)
+            read_probs = [self.aligned_read_prob(read) if not read.is_unmapped else self.unmapped_read_prob for read in aligned_reads]
+            classification, posterior_probs, sort_fate = self.bayes_classify(read_probs)
             mismatch_counts = self.count_mismatches(aligned_reads)
             self.log(mismatch_counts, posterior_probs, sort_fate)
             return classification, posterior_probs, sort_fate
 
         else: # paired end reads
-            read_probs = [(self.aligned_read_prob(read) if not read.is_unmapped else 0.0) for read in aligned_reads]
-            mate_probs = [(self.aligned_read_prob(read_mate) if not read_mate.is_unmapped else 0.0) for read_mate in aligned_read_mates]
+            read_probs = [(self.aligned_read_prob(read) if not read.is_unmapped else self.unmapped_read_prob) for read in aligned_reads]
+            mate_probs = [(self.aligned_read_prob(read_mate) if not read_mate.is_unmapped else self.unmapped_read_prob) for read_mate in aligned_read_mates]
             # check if, for any genome, read and mate mapped
             total_read_probs = [read_prob * mate_prob for read_prob, mate_prob in zip(read_probs, mate_probs)]
             mismatch_counts = self.count_mismatches(aligned_reads)
             mismatch_counts_mates = self.count_mismatches(aligned_read_mates)
-
-            if total_read_probs != [0.0] * len(aligned_reads):
                 
-                # for at least one genome, both read and mate mapped
-                # so we classify using the combined probability of reads + mates
-                classification, posterior_probs, sort_fate = self.baiyes_classify(total_read_probs)
-                
-                self.log(mismatch_counts, read_probs, sort_fate)
-                self.log(mismatch_counts_mates, read_probs, sort_fate)
-                return classification, posterior_probs, sort_fate
-
-            else:
-                    
-                # this can only occur if data is paired end and there is not
-                # a single genome for which read and mate both mapped.
-                # solution: we classify based on the strongest posterior from
-                # either the read or the mate.
-                classification1, posterior_probs1, sort_fate1 = self.baiyes_classify(read_probs)
-                classification2, posterior_probs2, sort_fate2 = self.baiyes_classify(mate_probs)
-                
-                # which yielded a stronger posterior, using reads or their mates?
-                # return this result
-                max1 = max(posterior_probs1)
-                max2 = max(posterior_probs2)
+            # for at least one genome, both read and mate mapped
+            # so we classify using the combined probability of reads + mates
+            classification, posterior_probs, sort_fate = self.bayes_classify(total_read_probs)
             
-                if max(max1, max2) == max1:
-                    self.log(mismatch_counts, read_probs, sort_fate1)
-                    self.log(mismatch_counts_mates, read_probs, sort_fate1)
-                    return classification1, posterior_probs1, sort_fate1
-                else:
-                    self.log(mismatch_counts, read_probs, sort_fate2)
-                    self.log(mismatch_counts_mates, read_probs, sort_fate2)
-                    return classification2, posterior_probs2, sort_fate2
+            self.log(mismatch_counts, read_probs, sort_fate)
+            self.log(mismatch_counts_mates, read_probs, sort_fate)
+            return classification, posterior_probs, sort_fate
 
     # UNTANGLE SAMFILES
     # Given a list of samfiles mapping the same RNAseq reads to different genomes,
@@ -337,7 +304,7 @@ class multimapped_read_separator():
                     continue
                 ix += 1
                     
-                aligned_read_set, aligned_read_mate_set = fix_read_mate_order(aligned_read_set, aligned_read_mate_set)
+                aligned_read_set, aligned_read_mate_set = fix_read_mate_order(aligned_read_set, aligned_read_mate_set, cautious)
                 
                 classification, posterior_probs, sort_fate = self.untangle_mappings(aligned_read_set, aligned_read_mate_set)
                 # CRUCIAL STEP: skip the mate read
@@ -349,10 +316,10 @@ class multimapped_read_separator():
 
     def write_samfiles(self, new_sam_paths):
         
-        # open up old, unsorted samfiles
+        # open up old, unseparated samfiles
         old_sams = [pysam.Samfile(sam) for sam in self.samfiles]
 
-        # open up samfiles to print sorted aligned_reads to
+        # open up samfiles to print separated aligned_reads to
         new_sams = [pysam.Samfile(new_sam_path, 'wh', template=old_sam) for old_sam, new_sam_path in zip(old_sams, new_sam_paths)]
                     
         for sort_fate, aligned_read_set in izip(self.sort_fates, izip(*old_sams)):
@@ -372,9 +339,9 @@ class multimapped_read_separator():
 # The procedure called by different processes using apply_async.
 # Processes aligned reads, moving in skips of size interleave_ix. It is recommended
 # that you do not call this from an external module
-def _worker_procedure(samfiles, paired_end, interleave_ix, num_processes, mismatch_prob_dict, transition_prob_dict, genome_priors, posterior_cutoff):
+def _worker_procedure(samfiles, paired_end, interleave_ix, num_processes, mismatch_prob_dict, transition_prob_dict, genome_priors, posterior_cutoff, unmapped_read_prob):
 
-    separator = multimapped_read_separator(samfiles, paired_end, mismatch_prob_dict, transition_prob_dict, genome_priors, posterior_cutoff, interleave_ix)
+    separator = multimapped_read_separator(samfiles, paired_end, mismatch_prob_dict, transition_prob_dict, genome_priors, posterior_cutoff, unmapped_read_prob)
     separator.untangle_samfiles(interleave_ix, num_processes)
     
     return separator
@@ -417,8 +384,9 @@ def merge_separators(separator_list):
 # and samfile2 in an interleaved fashion
 def sparta(samfiles, paired_end=False, genome_names=[],
                   num_processes=mp.cpu_count(), calculate_mismatches=False,
-                  pileup_height=20, sample_every=10, genome_priors=[], posterior_cutoff=0.99,
-                  output_dir='output', separated_samfiles=[], quiet=False, mismatch_prob_inputfile=None):
+                  pileup_height=default_pileup_height, sample_every=default_sample_every, genome_priors=[], posterior_cutoff=default_posterior_cutoff,
+                  unmapped_read_prob=default_unmapped_probability, output_dir=default_output_dir, separated_samfiles=[], quiet=False,
+                  mismatch_prob_inputfile=None, transition_matrix_inputfile=None):
             
     # IT IS RECOMMENDED NOT TO MOVE THIS DEFAULT ARGUMENT HANDLING CODE
     # default argument handling has to go here for genome_names, genome_priors, and separated_samfiles
@@ -440,7 +408,7 @@ def sparta(samfiles, paired_end=False, genome_names=[],
         sys.exit(-1)
 
     if separated_samfiles == []:
-        separated_samfiles = [os.path.join(output_dir, '{}_sorted.sam'.format(name)) for name in genome_names]
+        separated_samfiles = [os.path.join(output_dir, '{}_separated.sam'.format(name)) for name in genome_names]
     elif len(separated_samfiles) != len(samfiles):
         print('ERROR: length of separated (classified) sam output list (-ss argument) should be equal to number of samfiles', file=sys.stderr)
         sys.exit(-1)
@@ -452,14 +420,24 @@ def sparta(samfiles, paired_end=False, genome_names=[],
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir) 
+
+    if unmapped_read_prob <= 0 or unmapped_read_prob >= (1.0 - posterior_cutoff):
+        print('\nERROR: Invalid unmapped read probability\n', file=sys.stderr)
+        sys.exit(-1)
+
+    # default values
+    mismatch_prob_dict = None
+    mismatch_prob_total_values = None
+    transition_prob_dict = None
     
     # If calculate_mismatches is True, then calculate actual probabilities of
     # random mismatch for each phred score.
-    if calculate_mismatches:
+    if calculate_mismatches and not (mismatch_prob_inputfile and transition_matrix_inputfile):
         mismatch_prob_dict, mismatch_prob_total_values, transition_prob_dict = calculate_mismatch_probs.create_mismatch_prob_dict(samfiles,
                                                         output_dir, paired_end, pileup_height, sample_every)
 
-    elif mismatch_prob_inputfile:
+    # Read in mismatch probabilities per phred score from a file if specified
+    if mismatch_prob_inputfile:
         
         mismatch_prob_dict = {}
         mismatch_prob_total_values = {}
@@ -468,12 +446,40 @@ def sparta(samfiles, paired_end=False, genome_names=[],
                 qual, prob, total = line.rstrip.split('\t')
                 mismatch_prob_dict[qual] = prob
                 mismatch_prob_total_values[qual] = total
+
+    # Read in RNA-seq base transition probabilies from a file if specified
+    # accepts either melted (A T 0.3) or unlabeled matrix format with
+    # row/col ordered (A T G C N) with diagonal ignored
+
+    if transition_matrix_inputfile:
+        
+        transition_prob_dict = compatibility_dict(int)        
+        with open(transition_matrix_inputfile, 'r') as inf:
+            
+            first_line = inf.readline()
+            first_line_elements = first_line.rstrip().split('\t')
+            if len(first_line_elements) == 3:
                 
-    else:
-        mismatch_prob_dict = None
-        mismatch_prob_total_values = None
-        transition_prob_dict = None
-    
+                inf.seek(0)
+                for line in inf:
+                    e = line.rstrip().split()
+                    transition_prob_dict[(e[0], e[1])] = float(e[2])                   
+                    
+            elif len(first_line_elements) == 5:
+
+                inf.seek(0)
+                for base1 in ['A', 'T', 'G', 'C', 'N']:
+                    
+                    elements = inf.readline().rstrip().split()
+                    for e, base2 in zip(elements, ['A', 'T', 'G', 'C', 'N']):
+                        
+                        if base1 != base2:
+                            transition_prob_dict[(base1, base2)] = float(e)
+                
+            else:
+                print('\nERROR: Incorrectly formatted transition_matrix_inputfile\n', file=sys.stderr)
+                sys.exit(-1)
+                
     if paired_end == False:
         # If in single read mode, perform rudimentary test for paired end reads.
         # if first two reads have same qname attribute, print a warning that the reads
@@ -507,8 +513,9 @@ def sparta(samfiles, paired_end=False, genome_names=[],
         # Create a set of interleave indices, to allow each process to only work on
         # one alignment every x alignments, where x is the number of processes running    
         for interleave_ix in range(0, num_processes):
-            args = (samfiles, paired_end, interleave_ix,
-                    num_processes, mismatch_prob_dict, transition_prob_dict, genome_priors, posterior_cutoff)
+            args = (samfiles, paired_end, interleave_ix, num_processes,
+                    mismatch_prob_dict, transition_prob_dict, genome_priors,
+                    posterior_cutoff, unmapped_read_prob)
             async_results.append(worker_pool.apply_async(_worker_procedure, args))
         
         # Join the processes back to the main thread   
@@ -528,13 +535,14 @@ def sparta(samfiles, paired_end=False, genome_names=[],
         # NOT MULTIPROCESSING
         # call the worker procedure within main process, without interleaving
         combined_separator = _worker_procedure(samfiles, paired_end, 0, 1, mismatch_prob_dict,
-                                               transition_prob_dict, genome_priors, posterior_cutoff)
+                                               transition_prob_dict, genome_priors,
+                                               posterior_cutoff, unmapped_read_prob)
 
     ############################################################################
     # PRINT OUTPUT : All printing occurs here
     ############################################################################
         
-    # Write newly sorted Samfiles, one for each genome
+    # Write newly separated Samfiles, one for each genome
     combined_separator.write_samfiles(separated_samfiles)
         
     # Print a file containing a matrix where columns are genomes and rows contain mismatches per alignment
@@ -572,18 +580,21 @@ if __name__ == '__main__':
     genome_names = args.names
     num_processes = args.processes
     calculate_mismatches = True if args.calculate_mismatches else False
-    mismatch_prob_inputfile = args.mismatch_prob_inputfile if args.mismatch_prob_inputfile else None        
+    mismatch_prob_inputfile = args.mismatch_prob_inputfile
+    transition_matrix_inputfile = args.transition_matrix_inputfile
     pileup_height = args.pileup_height
     sample_every = args.sample_every
     genome_priors = args.genome_priors
     posterior_cutoff = args.posterior_cutoff
+    unmapped_read_prob = args.unmapped_read_prob
     output_dir = args.output_dir
     separated_samfiles = args.separated_samfiles
     quiet = True if args.quiet else False
-    
+
+
     sparta(samfiles, paired_end, genome_names, num_processes, calculate_mismatches,
-           pileup_height, sample_every, genome_priors, posterior_cutoff, output_dir,
-           separated_samfiles, quiet, mismatch_prob_inputfile)
+           pileup_height, sample_every, genome_priors, posterior_cutoff, unmapped_read_prob,
+           output_dir, separated_samfiles, quiet, mismatch_prob_inputfile, transition_matrix_inputfile)
     
     # Print the total time
     t2 = time.time()

@@ -15,10 +15,9 @@ actual observed scores at each phred score.
 '''
 
 import argparse
-import copy
+from Bio.Seq import MutableSeq
 from compatibility import compatibility_dict
 from compatibility import izip
-from compatibility import rev_comp
 import os
 import pysam
 import re
@@ -26,7 +25,12 @@ import sys
 import time
 from util import fix_read_mate_order
 
-cautious = True # leave on for debug at least
+# default arguments
+from sparta import cautious
+from sparta import default_output_dir
+from sparta import default_pileup_height
+from sparta import default_sample_every
+
             
 # regex for the MD string that specifies errors from the reference.
 # more information about the MD string: page 7 of http://samtools.github.io/hts-specs/SAMv1.pdf
@@ -36,7 +40,7 @@ def parseargs():
     
     parser = argparse.ArgumentParser(description=desc)    
     parser.add_argument('samfiles', nargs='+', type = str, help='input samfiles', default=[])
-    parser.add_argument('output_dir', nargs='?', type = str, help='directory to write output to', default='output')
+    parser.add_argument('output_dir', nargs='?', type = str, help='directory to write output to', default=default_output_dir)
 
     # default to help option. credit to unutbu: http://stackoverflow.com/questions/4042452/display-help-message-with-python-argparse-when-script-is-called-without-any-argu
     if len(sys.argv) < 3:
@@ -49,7 +53,7 @@ def parseargs():
 # take an aligned read, return the genomic seq EXCEPT for deletions (^)
 def create_genome_seq(aligned):
     
-    genome_seq = list(copy.copy(aligned.seq)) if type(aligned.seq) == str else list(copy.copy(aligned.seq.decode('UTF-8')))
+    genome_seq = MutableSeq(aligned.seq) if type(aligned.seq) == str else MutableSeq(aligned.seq.decode('UTF-8'))
     
     # see samtools documentation for MD string
     
@@ -67,7 +71,7 @@ def create_genome_seq(aligned):
             genome_seq[seq_ix] = curr_err
             seq_ix += 1
 
-    return ''.join(genome_seq)
+    return genome_seq.tostring()
 
 def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
     
@@ -84,29 +88,11 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
         # if aligned reads are reversed, we reverse them and hold on to that info.
         
         pos_dicts = [dict(read.aligned_pairs) for read in aligned_read_set]
-
-        try:
-            genome_seqs = [create_genome_seq(read) if not read.is_reverse else rev_comp(create_genome_seq(read)) for read in aligned_read_set]
-        except:
-            import pdb
-            pdb.set_trace()
-            
-        qual = bytearray(aligned_read_set[0].qual) if not aligned_read_set[0].is_reverse else bytearray(aligned_read_set[0].qual)[::-1]
-        seq_temp = aligned_read_set[0].seq if not aligned_read_set[0].is_reverse else rev_comp(aligned_read_set[0].seq)
-        seq = seq_temp if type(seq_temp) == str else seq_temp.decode('UTF-8')
         
-        if cautious:
-
-            quals = [bytearray(read.qual) if not read.is_reverse else bytearray(read.qual)[::-1] for aligned_read in aligned_read_set]
-            seqs_temp = [read.seq if not read.is_reverse else rev_comp(read.seq) for read in aligned_read_set]
-            seqs = [temp if type(temp) == str else temp.decode('UTF-8') for temp in seqs_temp]
-            
-            for q in quals:
-                assert q == quals[0]
-            
-            for seq in seqs:
-                assert seq == seqs[0]
-
+        genome_seqs = [create_genome_seq(read) if not read.is_reverse else create_genome_seq(read).reverse_complement() for read in aligned_read_set]
+        qual = bytearray(aligned_read_set[0].qual) if not aligned_read_set[0].is_reverse else bytearray(aligned_read_set[0].qual)[::-1]
+        seq_temp = aligned_read_set[0].seq if type(aligned_read_set[0].seq) == str else aligned_read_set[0].seq.decode('UTF-8')    
+        seq = MutableSeq(seq_temp) if not aligned_read_set[0].is_reverse else MutableSeq(seq_temp).reverse_complement()
         
         for i in range(0, len(seq)):
             
@@ -119,7 +105,7 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
             
             pileup_dict[genomic_locs][seq[i]][qual[i]] += 1
 
-def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False, pileup_height=20, sample_every=10):
+def create_mismatch_prob_dict(samfiles, output_dir = default_output_dir, paired_end=False, pileup_height=default_pileup_height, sample_every=default_sample_every):
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -158,7 +144,7 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
                 aligned_read_set = aligned_read_mate_set
                 continue
 
-            aligned_read_set, aligned_read_mate_set = fix_read_mate_order(aligned_read_set, aligned_read_mate_set)
+            aligned_read_set, aligned_read_mate_set = fix_read_mate_order(aligned_read_set, aligned_read_mate_set, cautious)
             
 
             for aligned_read_set_generic in [aligned_read_set,aligned_read_mate_set]:
@@ -175,7 +161,7 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
     quality_score_mismatch_counter = compatibility_dict(int)
     # transition matrix at [qual][X][Y] stores, for a given quality score qual,
     # the number of observed transions from X to Y
-    quality_score_transition_matrix = compatibility_dict(lambda: compatibility_dict(lambda: compatibility_dict(int)))
+    transition_matrix = compatibility_dict(lambda: compatibility_dict(int))
 
     with open(os.path.join(output_dir, 'pileup_counts'), 'w') as outfile:
         
@@ -232,7 +218,7 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
                             quality_score_match_counter[qual] += num
                         else:
                             quality_score_mismatch_counter[qual] += num
-                            quality_score_transition_matrix[qual][consensus][nuc] += num
+                            transition_matrix[consensus][nuc] += num
                         
     mismatch_prob_dict = {}
     mismatch_prob_total_values = {}
@@ -244,16 +230,14 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
         mismatch_prob_dict[qual] = mismatch_prob
         mismatch_prob_total_values[qual] = mismatch_count + quality_score_match_counter[qual]
         
-    for qual, base_dict in quality_score_transition_matrix.items():
-        
-        for base1, base_to_count_dict in base_dict.items():
+        for base1, base_to_count_dict in transition_matrix.items():
             
-            for base2, count in base_to_count_dict.items():
+            for base2, num_trans_base1_base2 in base_to_count_dict.items():
                 
                 # we have a qual, base1, base2, and a count of transitions
                 # from base1 to base2 at that qual
-                total_observations = quality_score_mismatch_counter[qual] + quality_score_match_counter[qual]
-                transition_prob_dict[(qual, base1, base2)] = count / (total_observations * 1.0)
+                total_trans_from_base1 = sum(transition_matrix[base1].values())
+                transition_prob_dict[(base1, base2)] = num_trans_base1_base2 / (total_trans_from_base1 * 1.0)
     
     # For each phred, print observed probability of mismatch and number of bases observed in creating that probability
     if mismatch_prob_dict and mismatch_prob_total_values:
@@ -266,9 +250,9 @@ def create_mismatch_prob_dict(samfiles, output_dir = 'output', paired_end=False,
         with open(os.path.join(output_dir, 'transition_prob_info.txt'), 'w') as outputfile:
             
             for k, v in transition_prob_dict.items():
-                qual, base1, base2 = k
-                print ('{}\t{}\t{}\t{}'.format(qual, base1, base2, v), file=outputfile)    
-    
+                base1, base2 = k
+                print ('{}\t{}\t{}'.format(base1, base2, v), file=outputfile)   
+                
     return mismatch_prob_dict, mismatch_prob_total_values, transition_prob_dict
 
 # main logic

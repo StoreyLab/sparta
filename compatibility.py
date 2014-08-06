@@ -27,13 +27,17 @@ class compatibility_dict(collections.defaultdict):
         except AttributeError:   #python3.x
             return collections.defaultdict.items(self)
 
-# the following code is horrendous.
-# but, pysam seqs are byte objects in python 3.4
-# in order to reverse complement, have to convert
-# bytes -> string -> Seq -> reverse comp -> string -> bytes
+
 def rev_comp(inseq):
     
     if type(inseq) == str: # python 2.7
-        return str(Seq(inseq).reverse_complement())
+        return Seq(inseq).reverse_complement()
+
     else: # pyton 3.4
+        # the following code is horrendous.
+        # but, pysam seqs are byte objects in python 3.4
+        # in order to be comparable to other seqs, have to convert
+        # bytes -> string -> (biopython)Seq -> reverse comp -> string -> bytes
+        # not an issue for python 2.7 because pysam seqs are strings
+        # and can be compared directly to Biopython seqs for equality
         return bytes(str(Seq(inseq.decode(encoding='UTF-8')).reverse_complement()), encoding="UTF-8")
