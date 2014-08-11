@@ -70,7 +70,10 @@ def create_genome_seq(aligned):
             
             genome_seq[seq_ix] = curr_err
             seq_ix += 1
-
+    
+    if aligned.is_reverse:
+        genome_seq.reverse_complement()
+        
     return genome_seq
 
 def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
@@ -89,11 +92,12 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
         
         pos_dicts = [dict(read.aligned_pairs) for read in aligned_read_set]
         
-        genome_seqs = [create_genome_seq(read) if not read.is_reverse else create_genome_seq(read).reverse_complement() for read in aligned_read_set]
+        genome_seqs = [create_genome_seq(read) for read in aligned_read_set]
         qual = bytearray(aligned_read_set[0].qual) if not aligned_read_set[0].is_reverse else bytearray(aligned_read_set[0].qual)[::-1]
-        seq_temp = aligned_read_set[0].seq if type(aligned_read_set[0].seq) == str else aligned_read_set[0].seq.decode('UTF-8')    
-        seq = MutableSeq(seq_temp) if not aligned_read_set[0].is_reverse else MutableSeq(seq_temp).reverse_complement()
-        
+        seq = MutableSeq(aligned_read_set[0].seq if type(aligned_read_set[0].seq) == str else aligned_read_set[0].seq.decode('UTF-8'))  
+        if aligned_read_set[0].is_reverse:
+            seq.reverse_complement()
+
         for i in range(0, len(seq)):
             
             # need (chrom, pos, genome_seq[i]) tuples for each aligned_read
