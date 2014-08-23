@@ -26,7 +26,6 @@ import time
 from util import fix_read_mate_order
 
 # default arguments
-from sparta import cautious
 from sparta import default_output_dir
 from sparta import default_pileup_height
 from sparta import default_sample_every
@@ -148,7 +147,7 @@ def create_mismatch_prob_dict(samfiles, output_dir = default_output_dir, paired_
                 aligned_read_set = aligned_read_mate_set
                 continue
 
-            aligned_read_set, aligned_read_mate_set = fix_read_mate_order(aligned_read_set, aligned_read_mate_set, cautious)
+            aligned_read_set, aligned_read_mate_set = fix_read_mate_order(aligned_read_set, aligned_read_mate_set)
             
 
             for aligned_read_set_generic in [aligned_read_set,aligned_read_mate_set]:

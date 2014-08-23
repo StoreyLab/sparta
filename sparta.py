@@ -21,6 +21,16 @@ Run the program without arguments to see the description of optional arguments
 
 '''
 
+# set true for debugging purposes
+cautious = True 
+
+# default arguments
+default_pileup_height = 20
+default_sample_every = 10
+default_posterior_cutoff = 0.99
+default_unmapped_probability = 0.0001
+default_output_dir = 'output'
+
 #imports
 import argparse
 from compatibility import compatibility_dict
@@ -35,17 +45,8 @@ import pysam
 import re
 import sys
 import time
+from util import dup_cycle
 from util import fix_read_mate_order
-
-# set true for debugging purposes
-cautious = True 
-
-# default arguments
-default_pileup_height = 20
-default_sample_every = 10
-default_posterior_cutoff = 0.99
-default_unmapped_probability = 0.0001
-default_output_dir = 'output'
 
 # parse sparta program input.
 def parseargs():
@@ -128,6 +129,14 @@ class multimapped_read_separator():
         self.DEL_REGEX = re.compile("\^[A-Z]+")
         # regex for N, for tracking ambiguous bases
         self.N_REGEX = re.compile('\d[nN]\d')
+        # regex for the trailing matched bases in the MD string
+        self.TRAIL_REGEX = re.compile('\d+$')
+
+        # (currently hardcoded) values for various CIGAR-related events
+        self.log10_insertion_prob = math.log10(0.0001)
+        self.log10_deletion_prob = math.log10(0.0001)
+        self.log10_softclipped_prob = math.log10(0.0001)
+        self.log10_hardclipped_prob = math.log10(0.0001)
 
         # hardcode values for 33 since log10(0) gives an error
         self.log10_matched_base_prob[33] = - float('Inf')
@@ -169,6 +178,49 @@ class multimapped_read_separator():
         total = 0
         seq_ix = 0
         qual = bytearray(aligned.qual)
+        aligned_seq = aligned.seq if type(aligned.seq) == str else aligned.seq.decode('UTF-8')
+                        
+        if len(aligned.cigar) > 1:
+            
+            # cigar specifies abnormalities
+            # make aligned_seq into a list so it can be edited
+            
+            aligned_seq = list(aligned_seq)
+            curr_ix = 0 # curr_ix tracks the position in the alignedread seq
+
+            for op, op_length in aligned.cigar:
+                '''            
+                Methodology for handling CIGAR string operations:
+                M, P, N, =, X    no penalty
+                I (1)            insertion penalty per base
+                D (2)            deletion penalty per base
+                S (4)            treat soft-clipped bases as mismatches
+                H (5)            hard-clipped base penalty per base
+                '''
+                
+                if op == 1 or op == 4:
+                    # for insertions and soft clips, remove the inserted bases from the seq                    
+                        
+                    aligned_seq[curr_ix:(curr_ix + op_length)] = []
+                    qual[curr_ix:(curr_ix + op_length)] = []
+
+                elif op != 2 and op != 3 and op != 5:
+                    curr_ix += op_length
+
+                # 'penalties' for various rare sequence deviations 
+                if op == 1:
+                    total += self.log10_insertion_prob * op_length
+                elif op == 2:
+                    total += self.log10_deletion_prob * op_length
+                elif op == 4:
+                    total += self.log10_softclipped_prob * op_length
+                elif op == 5:
+                    total += self.log10_hardclipped_prob * op_length        
+            
+            # possibly unneccessary, but converting for posterity
+            aligned_seq = ''.join(aligned_seq)
+        
+        assert len(aligned_seq) == len(qual)        
         
         # step through sequence
         for matched_bases, curr_err in err:
@@ -180,7 +232,7 @@ class multimapped_read_separator():
 
             # if there is a deletion, skip forward to after the deletion
             if '^' in curr_err:
-                #this is where we should handle deletions
+                # deletions are already handled when CIGAR string is parsed
                 pass
                 
             elif 'N' in curr_err or 'n' in curr_err:
@@ -190,14 +242,30 @@ class multimapped_read_separator():
 
             # step through mismatched bases and sum log10 probabilities of that mismatch occuring
             else:
-                total += self.log10_mismatched_base_prob[(curr_err, aligned.seq[seq_ix], qual[seq_ix])]
+                # since an mismatch was specified at this location,
+                # it is nonsensical if the RNA and genome base agree
+                #assert curr_err != aligned_seq[seq_ix]
+                if curr_err == aligned_seq[seq_ix]:
+                    import pdb
+                    pdb.set_trace()
+                    
+                total += self.log10_mismatched_base_prob[(curr_err, aligned_seq[seq_ix], qual[seq_ix])]
                 seq_ix += 1
-
+        
+        trailing_bases = re.findall(self.TRAIL_REGEX, aligned.opt('MD'))[0]
+        # the number of bases specified by the MD should match the length of the
+        # aligned seq (and therefore the qual)
+        if seq_ix + int(trailing_bases) != len(aligned_seq):
+            import pdb
+            pdb.set_trace()
+            
+        assert seq_ix + int(trailing_bases) == len(aligned_seq)
+        
         # step through the remaining matched bases
         while seq_ix < len(qual):
             total += self.log10_matched_base_prob[qual[seq_ix]]
             seq_ix += 1
-            
+                    
         # sum the probabilities and exponentiate to convert back from log10 scale
         return pow(10, total)
 
@@ -218,7 +286,6 @@ class multimapped_read_separator():
                 
         return mismatch_counts
 
-
     def bayes_classify(self, read_probs):
         
         # apply bayes rule: compute probability that each genome generated
@@ -236,7 +303,7 @@ class multimapped_read_separator():
 
 
     # given a list of aligned read objects mapping the same read to different genomes,
-    # return the name of the most likely genome and probability of genome1
+    # return the name of the most likely genome and probabilities of each genome
     def untangle_mappings(self, aligned_reads, aligned_read_mates=None):
     
         # probability of the read given that genome1 generated it
@@ -259,8 +326,7 @@ class multimapped_read_separator():
             # so we classify using the combined probability of reads + mates
             classification, posterior_probs, sort_fate = self.bayes_classify(total_read_probs)
             
-            self.log(mismatch_counts, read_probs, sort_fate)
-            self.log(mismatch_counts_mates, read_probs, sort_fate)
+            self.log(mismatch_counts + mismatch_counts_mates, read_probs, sort_fate)
             return classification, posterior_probs, sort_fate
 
     # UNTANGLE SAMFILES
@@ -304,7 +370,7 @@ class multimapped_read_separator():
                     continue
                 ix += 1
                     
-                aligned_read_set, aligned_read_mate_set = fix_read_mate_order(aligned_read_set, aligned_read_mate_set, cautious)
+                aligned_read_set, aligned_read_mate_set = fix_read_mate_order(aligned_read_set, aligned_read_mate_set)
                 
                 classification, posterior_probs, sort_fate = self.untangle_mappings(aligned_read_set, aligned_read_mate_set)
                 # CRUCIAL STEP: skip the mate read
@@ -321,13 +387,23 @@ class multimapped_read_separator():
 
         # open up samfiles to print separated aligned_reads to
         new_sams = [pysam.Samfile(new_sam_path, 'wh', template=old_sam) for old_sam, new_sam_path in zip(old_sams, new_sam_paths)]
-                    
-        for sort_fate, aligned_read_set in izip(self.sort_fates, izip(*old_sams)):
 
-            if sort_fate:
-                
-                new_sams[sort_fate-1].write(aligned_read_set[sort_fate-1])
+        if not self.paired_end: # single reads
+
+            for sort_fate, aligned_read_set in izip(self.sort_fates, izip(*old_sams)):
+    
+                if sort_fate:
+                    
+                    new_sams[sort_fate-1].write(aligned_read_set[sort_fate-1])
+                    
+        else: # paired end reads
             
+            for sort_fate, aligned_read_set in izip(dup_cycle(self.sort_fates), izip(*old_sams)):
+    
+                if sort_fate:
+                    
+                    new_sams[sort_fate-1].write(aligned_read_set[sort_fate-1])
+                    
         for sam in old_sams:
             sam.close()
         
@@ -551,7 +627,7 @@ def sparta(samfiles, paired_end=False, genome_names=[],
         print('\t'.join(genome_names), file=mismatch_file)
         for mismatch_list in combined_separator.mismatch_logs:
             print('\t'.join(str(x) for x in mismatch_list), file=mismatch_file)
-
+                
     # Print a file containing a matrix where columns are genomes and rows 
     # contain posterior probabilities of genomes per alignment
     posteriors_filepath = os.path.join(output_dir, 'posterior_probabilities')
