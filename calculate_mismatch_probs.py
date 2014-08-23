@@ -30,7 +30,6 @@ from sparta import default_output_dir
 from sparta import default_pileup_height
 from sparta import default_sample_every
 
-            
 # regex for the MD string that specifies errors from the reference.
 # more information about the MD string: page 7 of http://samtools.github.io/hts-specs/SAMv1.pdf
 MD_REGEX = re.compile("([0-9]+)([A-Z]|\^[A-Z]+)")
@@ -51,9 +50,11 @@ def parseargs():
 
 # take an aligned read, return the genomic seq EXCEPT for deletions (^)
 def create_genome_seq(aligned):
-    
-    genome_seq = MutableSeq(aligned.seq) if type(aligned.seq) == str else MutableSeq(aligned.seq.decode('UTF-8'))
-    
+
+    aligned_seq = aligned.seq if type(aligned.seq) == str else aligned.seq.decode('UTF-8')
+        
+    genome_seq = MutableSeq(aligned_seq)
+
     # see samtools documentation for MD string
     
     err = re.findall(MD_REGEX, aligned.opt("MD"))
@@ -65,14 +66,15 @@ def create_genome_seq(aligned):
         
         seq_ix += int(matched_bases)
         
-        if '^' not in curr_err:
-            
-            genome_seq[seq_ix] = curr_err
-            seq_ix += 1
+        assert '^' not in curr_err
+        assert curr_err != genome_seq[seq_ix]
+        
+        genome_seq[seq_ix] = curr_err
+        seq_ix += 1
     
     if aligned.is_reverse:
         genome_seq.reverse_complement()
-        
+
     return genome_seq
 
 def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
@@ -80,25 +82,32 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
     # sanity check that all the qnames (RNA read IDs) are the same
     for read in aligned_read_set:
         assert read.qname == aligned_read_set[0].qname
-    
+
     if not True in [read.is_unmapped for read in aligned_read_set]:
+        
         # all alignments mapped
-        
         for read in aligned_read_set:
+            
+            for op, op_len in read.cigar:
+                
+                if op > 0 and op < 7:
+                    # do not sample reads where there are insertions or deletions   
+                    return
+                    
             assert len(read.seq) == len(aligned_read_set[0].seq)
-        
+          
         # if aligned reads are reversed, we reverse them and hold on to that info.
         
         pos_dicts = [dict(read.aligned_pairs) for read in aligned_read_set]
-        
         genome_seqs = [create_genome_seq(read) for read in aligned_read_set]
-        qual = bytearray(aligned_read_set[0].qual) if not aligned_read_set[0].is_reverse else bytearray(aligned_read_set[0].qual)[::-1]
+        qual = bytearray(aligned_read_set[0].qual)
         seq = MutableSeq(aligned_read_set[0].seq if type(aligned_read_set[0].seq) == str else aligned_read_set[0].seq.decode('UTF-8'))  
         if aligned_read_set[0].is_reverse:
             seq.reverse_complement()
+            qual = qual[::-1]
 
         for i in range(0, len(seq)):
-            
+                        
             # need (chrom, pos, genome_seq[i]) tuples for each aligned_read
             chroms = [sam.getrname(a.tid) for sam, a in izip(sams, aligned_read_set)]
             positions = [d[i] if not a.is_reverse else d[len(seq) - i - 1] for d, a in zip(pos_dicts, aligned_read_set)]
@@ -146,7 +155,7 @@ def create_mismatch_prob_dict(samfiles, output_dir = default_output_dir, paired_
             if i % sample_every != 0:
                 aligned_read_set = aligned_read_mate_set
                 continue
-
+ 175785), (121, 175786), (122, 175787), (123, 175788), (124, 175789), (125, 175790), (126, 175791), (127, 175792), (128, 175793), (129, 175794), (130, 175795), (131, 175796), (132, 175797), (133, 175798), (134, 175799), (135, 175800), (136
             aligned_read_set, aligned_read_mate_set = fix_read_mate_order(aligned_read_set, aligned_read_mate_set)
             
 

@@ -26,7 +26,7 @@ cautious = True
 
 # default arguments
 default_pileup_height = 20
-default_sample_every = 10
+default_sample_every = 1
 default_posterior_cutoff = 0.99
 default_unmapped_probability = 0.0001
 default_output_dir = 'output'
