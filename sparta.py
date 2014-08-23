@@ -82,7 +82,7 @@ def parseargs():
 # MULTIMAPPED READ SEPARATOR
 # This is a separator class that sorts an RNAseq read to one parental allele or the other
 # Each child process processes reads using a separate instance of this class,
-# ensuring complete independence of data until recombination at the end
+# ensuring complete independence of data until recombination at the end 
 class multimapped_read_separator():
     
 
