@@ -15,17 +15,17 @@ import math
 import os
 import shutil
 import sparta
-import sys
 import pysam
 
 # take a sequence, quality string, and MD string and return an aligned_read object
-def read_gen(seq, qual, MD):
+def read_gen(seq, qual, MD, cigar=None):
     read = pysam.AlignedRead()
     read.seq = seq
     read.qual = qual
     read.tags = [('MD',MD)]
+    read.cigar = cigar
     return read
-'''
+
 # tests for the matched base probability calculator
 class test_matched_prob(unittest.TestCase):    
     
@@ -68,7 +68,7 @@ class test_mismatched_prob(unittest.TestCase):
     def test_tilde(self):
         prob = self.separator.log10_mismatched_base_prob[('C', 'A', 126)]
         self.assertAlmostEqual(prob, -9.7771212547196624372950279) 
-'''
+
 
 # tests for the method that acumulates probabilities for a whole aligned read
 class test_aligned_read_prob(unittest.TestCase):
@@ -214,6 +214,58 @@ class test_untangle(unittest.TestCase):
         result, NIL, NIL2 = self.separator.untangle_mappings([read1, read2])
         self.assertTrue(result == 'classified1')
 
+# these tests exist to make sure that the proper sequence alignment is acheived
+# when weird cigar string cases are encountered. The basic assumption is that
+# once a sequence with (for instance) insertions is edited to 'remove' the insertions,
+# the MD field of the aligned_read object should align perfectly with it.
+# In other words, the number of bases that the MD field specify should match up to
+# that of the edited sequence.
+class test_cigar_handling(unittest.TestCase):
+
+    def setUp(self):
+        self.separator = sparta.multimapped_read_separator(genome_priors=[0.5, 0.5])
+        
+        # most of the sequences are modified forms of that used repeatedly in test_untangle
+        # 3 inserted 'T's
+        # simply ensure that the program didn't crash
+    def test_insertion(self):
+        read = read_gen('AAGTTTCAAAAAA','FFA###AFFFFFF','2A0A6',[(0,3),(1,3),(0,7)])
+        prob = self.separator.aligned_read_prob(read)
+        assert prob
+
+        # 3 deleted 'T's in the same position        
+    def test_deletion(self):
+        read = read_gen('AAGCAAAAAA','FFAAFFFFFF','2A0^TTT0A6',[(0,3),(2,3),(0,7)])
+        prob = self.separator.aligned_read_prob(read)
+        assert prob
+        
+        # "skipped region" of 3 'T's in the same position
+        # this is basically a deletion but is more meant to signify an intron        
+    def test_skipped_region(self):
+        read = read_gen('AAGCAAAAAA','FFAAFFFFFF','2A0A6',[(0,3),(3,3),(0,7)])
+        prob = self.separator.aligned_read_prob(read)
+        assert prob
+    
+        # soft clipping: 3 'T's at the beginning of the seq are not "counted" by MD        
+    def test_soft_clipping(self):
+        read = read_gen('TTTAAGCAAAAAA','###FFAAFFFFFF','2A0A6',[(4,3),(0,10)])
+        prob = self.separator.aligned_read_prob(read)
+        assert prob
+        
+        # hard clipping: like a soft clipping except bases aren't present in SEQ
+        # so really not much can go wrong here        
+    def test_hard_clipping(self):
+        read = read_gen('AAGCAAAAAA','FFAAFFFFFF','2A0A6',[(5,3),(0,10)])
+        prob = self.separator.aligned_read_prob(read)
+        assert prob
+        
+        # same as the insertion test but also with 2 padding bases
+        # padding bases do not add anything to the total length of SEQ
+    def test_padding(self):
+        read = read_gen('AAGTTTCAAAAAA','FFA###AFFFFFF','2A0A6',[(0,3),(1,3),(6,2),(0,7)])
+        prob = self.separator.aligned_read_prob(read)
+        assert prob
+
 # test that the same result is obtained when sparta is run in single core
 # (no child processes) mode and multiprocessing mode
 class test_multiprocessing(unittest.TestCase):
@@ -285,7 +337,8 @@ class test_multiprocessing(unittest.TestCase):
                                                    common=files_to_check)
                                                    
         match2, mismatch2, errors2 = filecmp.cmpfiles(os.path.join(out_dir,'no_mp'), os.path.join(out_dir,'mp10'),
-                                                      common=files_to_check)
+                                             # soft clipping: 3 'T's at the beginning of the seq are not "counted" by MD        
+                 common=files_to_check)
         
         if match == []:
             import pdb
