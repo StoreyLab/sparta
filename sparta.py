@@ -33,9 +33,6 @@ default_output_dir = 'output'
 
 #imports
 import argparse
-from compatibility import compatibility_dict
-from compatibility import izip
-from copy import copy
 import calculate_mismatch_probs
 import itertools
 import math
@@ -45,6 +42,10 @@ import pysam
 import re
 import sys
 import time
+
+from util import compatibility_dict
+from util import izip
+from util import copy
 from util import dup_cycle
 from util import fix_read_mate_order
 
@@ -244,21 +245,14 @@ class multimapped_read_separator():
             else:
                 # since an mismatch was specified at this location,
                 # it is nonsensical if the RNA and genome base agree
-                #assert curr_err != aligned_seq[seq_ix]
-                if curr_err == aligned_seq[seq_ix]:
-                    import pdb
-                    pdb.set_trace()
+                assert curr_err != aligned_seq[seq_ix]
                     
                 total += self.log10_mismatched_base_prob[(curr_err, aligned_seq[seq_ix], qual[seq_ix])]
                 seq_ix += 1
         
         trailing_bases = re.findall(self.TRAIL_REGEX, aligned.opt('MD'))[0]
         # the number of bases specified by the MD should match the length of the
-        # aligned seq (and therefore the qual)
-        if seq_ix + int(trailing_bases) != len(aligned_seq):
-            import pdb
-            pdb.set_trace()
-            
+        # aligned seq (and therefore the qual)            
         assert seq_ix + int(trailing_bases) == len(aligned_seq)
         
         # step through the remaining matched bases

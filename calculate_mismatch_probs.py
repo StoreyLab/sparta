@@ -16,14 +16,15 @@ actual observed scores at each phred score.
 
 import argparse
 from Bio.Seq import MutableSeq
-from compatibility import compatibility_dict
-from compatibility import izip
 import os
 import pysam
 import re
 import sys
 import time
+
+from util import compatibility_dict
 from util import fix_read_mate_order
+from util import izip
 
 # default arguments
 from sparta import default_output_dir
@@ -38,7 +39,7 @@ def parseargs():
     
     parser = argparse.ArgumentParser(description=desc)    
     parser.add_argument('samfiles', nargs='+', type = str, help='input samfiles', default=[])
-    parser.add_argument('output_dir', nargs='?', type = str, help='directory to write output to', default=default_output_dir)
+    parser.add_argument('-o', '--output_dir', nargs='?', type = str, help='directory to write output to', default=default_output_dir)
 
     # default to help option. credit to unutbu: http://stackoverflow.com/questions/4042452/display-help-message-with-python-argparse-when-script-is-called-without-any-argu
     if len(sys.argv) < 3:
@@ -105,6 +106,9 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
         if aligned_read_set[0].is_reverse:
             seq.reverse_complement()
             qual = qual[::-1]
+        
+        for genome_seq in genome_seqs:
+            assert len(genome_seq) != len(seq)
 
         for i in range(0, len(seq)):
                         
@@ -155,7 +159,7 @@ def create_mismatch_prob_dict(samfiles, output_dir = default_output_dir, paired_
             if i % sample_every != 0:
                 aligned_read_set = aligned_read_mate_set
                 continue
- 175785), (121, 175786), (122, 175787), (123, 175788), (124, 175789), (125, 175790), (126, 175791), (127, 175792), (128, 175793), (129, 175794), (130, 175795), (131, 175796), (132, 175797), (133, 175798), (134, 175799), (135, 175800), (136
+
             aligned_read_set, aligned_read_mate_set = fix_read_mate_order(aligned_read_set, aligned_read_mate_set)
             
 
