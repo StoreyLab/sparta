@@ -1,0 +1,173 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>This is SPARTA’s documentation! &mdash; sparta 1.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="sparta 1.0.1 documentation" href="#" />
+    <link rel="next" title="sparta.py" href="sparta.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="sparta.html" title="sparta.py"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">sparta 1.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="this-is-sparta-s-documentation">
+<h1>This is SPARTA&#8217;s documentation!<a class="headerlink" href="#this-is-sparta-s-documentation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<h2>Overview:<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>SPARTA (<strong>S</strong>eparate <strong>P</strong>arental <strong>A</strong>lleles for <strong>R</strong>eads in <strong>T</strong>angled <strong>A</strong>lignments) is a bioinformatics tool for python 2.7 and 3.4. It is designed for RNA-seq experiments involving pooled (&#8220;tangled&#8221;) reads sampled from a population containing two ancestral allele types (e.g. from the cross of two haploid yeast strains). Following alignment of the reads to the ancestral genomes with Bowtie2, SPARTA serves to separate alignments based on the most likely parental allele type.</p>
+</div>
+<div class="section" id="features">
+<h2>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h2>
+<p>SPARTA includes the following features:</p>
+<ul class="simple">
+<li>Support for the widely accepted SAM format for NGS alignments</li>
+<li>Support for both single read and paired end sequencing experiments</li>
+<li>Fast performance on multicore systems by harnessing all available cores with python multiprocessing</li>
+<li>Optional estimation of mismatch probabilities per quality score from read-pileup to allow more accurate read classification</li>
+<li>Produce separate SAM output files for aligned reads that are uniquely classifiable to each genome</li>
+<li>Bicompatibile with Python 2.7 and 3.4</li>
+</ul>
+</div>
+<div class="section" id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h2>
+<p>SPARTA requires the following to be installed:</p>
+<ol class="arabic simple">
+<li>Python 2.7.x or Python 3.4.x</li>
+<li>Biopython 1.64-2</li>
+<li>Pysam 0.7.7-1</li>
+</ol>
+<p>Earlier versions of python or libraries may work, but are not guaranteed.
+For instance, pysam 0.5 is NOT compatible.</p>
+<p>It is recommended to use GNU/Linux or a Unix-like OS. Sparta was tested on Arch Linux and CentOS. Windows compatibility for SPARTA is <strong>untested</strong> and not guaranteed.
+The sample analysis scripts run_bowtie_sparta.py and run_sparta_pipeline.py will NOT to work on Windows.</p>
+<p>For best performance, use python 2.7. Datatype conversions and other modifications that allow python 3.4 to work may result in slightly slower performance.</p>
+</div>
+<div class="section" id="contents">
+<h2>Contents:<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sparta.html">sparta.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="estimate_error_freq.html">estimate_error_freq.py</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compatibility.html">compatibility.py</a></li>
+</ul>
+</div>
+<span class="target" id="module-sparta"></span><span class="target" id="module-estimate_error_freq"></span><span class="target" id="module-compatibility"></span><p>Created on Mon Jul  7 12:28:01 2014</p>
+<p>&#64;author: peter</p>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+<div class="section" id="github-page-with-source-code">
+<h1>Github Page with source code:<a class="headerlink" href="#github-page-with-source-code" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference external" href="https://github.com/StoreyLab/sparta">https://github.com/StoreyLab/sparta</a></p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">This is SPARTA&#8217;s documentation!</a><ul>
+<li><a class="reference internal" href="#overview">Overview:</a></li>
+<li><a class="reference internal" href="#features">Features</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#contents">Contents:</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+<li><a class="reference internal" href="#github-page-with-source-code">Github Page with source code:</a></li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="sparta.html"
+                        title="next chapter">sparta.py</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="sparta.html" title="sparta.py"
+             >next</a> |</li>
+        <li><a href="#">sparta 1.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Peter Edge.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
