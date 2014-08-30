@@ -55,50 +55,10 @@
   <div class="section" id="sparta-py">
 <h1>sparta.py<a class="headerlink" href="#sparta-py" title="Permalink to this headline">¶</a></h1>
 <p>sparta.py is the main source file for SPARTA. Its main functionality is to take as input two SAM format files that map the same set of RNA-seq reads (i.e. from the same .fastq file) to different genomes, and sort each read as belonging to one genome or the other. It is assumed that each read belongs to one genome or the other, for instance pooled RNA-seq data from a population of crosses of two haploid yeast strains.</p>
-<dl class="function">
-<dt id="sparta.sort_samfiles">
-<tt class="descclassname">sparta.</tt><tt class="descname">sort_samfiles</tt><big>(</big><em>samfile1</em>, <em>samfile2</em>, <em>paired_end=False</em>, <em>genome1_name='genome1'</em>, <em>genome2_name='genome2'</em>, <em>num_processes=2</em>, <em>estimate_error_prob=False</em>, <em>genome1_prior=0.5</em>, <em>posterior_cutoff=0.9</em>, <em>output_dir='output'</em>, <em>sorted_sam1='output/genome1_sorted.sam'</em>, <em>sorted_sam2='output/genome2_sorted.sam'</em>, <em>quiet=False</em><big>)</big><a class="headerlink" href="#sparta.sort_samfiles" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
 <p>sort_samfiles takes the pathnames of two SAM format files, each that map</p>
-<dl class="class">
-<dt id="sparta.multimapped_read_sorter">
-<em class="property">class </em><tt class="descclassname">sparta.</tt><tt class="descname">multimapped_read_sorter</tt><big>(</big><em>samfile1=None</em>, <em>samfile2=None</em>, <em>paired_end=False</em>, <em>mismatch_prob_dict=None</em>, <em>genome1_prior=0.5</em>, <em>posterior_cutoff=0.9</em>, <em>interleave_ix=0</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_sorter" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="sparta.multimapped_read_sorter.aligned_read_prob">
-<tt class="descclassname">multimapped_read_sorter.</tt><tt class="descname">aligned_read_prob</tt><big>(</big><em>aligned</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_sorter.aligned_read_prob" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="sparta.multimapped_read_sorter.untangle_two_mappings">
-<tt class="descclassname">multimapped_read_sorter.</tt><tt class="descname">untangle_two_mappings</tt><big>(</big><em>aligned1</em>, <em>aligned2</em>, <em>aligned1_mate=None</em>, <em>aligned2_mate=None</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_sorter.untangle_two_mappings" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="sparta.multimapped_read_sorter.untangle_two_samfiles">
-<tt class="descclassname">multimapped_read_sorter.</tt><tt class="descname">untangle_two_samfiles</tt><big>(</big><em>interleave_ix=0</em>, <em>num_processes=1</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_sorter.untangle_two_samfiles" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="sparta.multimapped_read_sorter.print_sorted_samfiles">
-<tt class="descclassname">multimapped_read_sorter.</tt><tt class="descname">print_sorted_samfiles</tt><big>(</big><em>new_sam1_path</em>, <em>new_sam2_path</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_sorter.print_sorted_samfiles" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="sparta.multimapped_read_sorter.log">
-<tt class="descclassname">multimapped_read_sorter.</tt><tt class="descname">log</tt><big>(</big><em>err1</em>, <em>err2</em>, <em>prob1</em>, <em>category</em>, <em>sort_fate</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_sorter.log" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="sparta.merge_sorters">
-<tt class="descclassname">sparta.</tt><tt class="descname">merge_sorters</tt><big>(</big><em>sorter_list</em><big>)</big><a class="headerlink" href="#sparta.merge_sorters" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
 <dl class="function">
 <dt id="sparta._worker_procedure">
-<tt class="descclassname">sparta.</tt><tt class="descname">_worker_procedure</tt><big>(</big><em>samfile1</em>, <em>samfile2</em>, <em>paired_end</em>, <em>interleave_ix</em>, <em>num_processes</em>, <em>mismatch_prob_dict</em>, <em>genome1_prior</em>, <em>posterior_cutoff</em><big>)</big><a class="headerlink" href="#sparta._worker_procedure" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">sparta.</tt><tt class="descname">_worker_procedure</tt><big>(</big><em>samfiles</em>, <em>paired_end</em>, <em>interleave_ix</em>, <em>num_processes</em>, <em>mismatch_prob_dict</em>, <em>transition_prob_dict</em>, <em>genome_priors</em>, <em>posterior_cutoff</em>, <em>unmapped_read_prob</em><big>)</big><a class="headerlink" href="#sparta._worker_procedure" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
