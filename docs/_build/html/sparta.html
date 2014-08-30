@@ -24,7 +24,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="sparta 1.0.1 documentation" href="index.html" />
-    <link rel="next" title="estimate_error_freq.py" href="estimate_error_freq.html" />
+    <link rel="next" title="calculate_mismatch_probs.py" href="calculate_mismatch_probs.html" />
     <link rel="prev" title="This is SPARTA’s documentation!" href="index.html" /> 
   </head>
   <body>
@@ -38,7 +38,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="estimate_error_freq.html" title="estimate_error_freq.py"
+          <a href="calculate_mismatch_probs.html" title="calculate_mismatch_probs.py"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="index.html" title="This is SPARTA’s documentation!"
@@ -55,10 +55,25 @@
   <div class="section" id="sparta-py">
 <h1>sparta.py<a class="headerlink" href="#sparta-py" title="Permalink to this headline">¶</a></h1>
 <p>sparta.py is the main source file for SPARTA. Its main functionality is to take as input two SAM format files that map the same set of RNA-seq reads (i.e. from the same .fastq file) to different genomes, and sort each read as belonging to one genome or the other. It is assumed that each read belongs to one genome or the other, for instance pooled RNA-seq data from a population of crosses of two haploid yeast strains.</p>
-<p>sort_samfiles takes the pathnames of two SAM format files, each that map</p>
 <dl class="function">
-<dt id="sparta._worker_procedure">
-<tt class="descclassname">sparta.</tt><tt class="descname">_worker_procedure</tt><big>(</big><em>samfiles</em>, <em>paired_end</em>, <em>interleave_ix</em>, <em>num_processes</em>, <em>mismatch_prob_dict</em>, <em>transition_prob_dict</em>, <em>genome_priors</em>, <em>posterior_cutoff</em>, <em>unmapped_read_prob</em><big>)</big><a class="headerlink" href="#sparta._worker_procedure" title="Permalink to this definition">¶</a></dt>
+<dt id="sparta.sparta">
+<tt class="descclassname">sparta.</tt><tt class="descname">sparta</tt><big>(</big><em>samfiles</em>, <em>paired_end=False</em>, <em>genome_names=</em>, <span class="optional">[</span><span class="optional">]</span><em>num_processes=2</em>, <em>calculate_mismatches=False</em>, <em>pileup_height=20</em>, <em>sample_every=10</em>, <em>genome_priors=</em>, <span class="optional">[</span><span class="optional">]</span><em>posterior_cutoff=0.99</em>, <em>unmapped_read_prob=0.0001</em>, <em>output_dir='output'</em>, <em>separated_samfiles=</em>, <span class="optional">[</span><span class="optional">]</span><em>quiet=False</em>, <em>mismatch_prob_inputfile=None</em>, <em>transition_matrix_inputfile=None</em><big>)</big><a class="headerlink" href="#sparta.sparta" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>sort_samfiles takes the pathnames of two SAM format files, each that map</p>
+<dl class="class">
+<dt id="sparta.multimapped_read_separator">
+<em class="property">class </em><tt class="descclassname">sparta.</tt><tt class="descname">multimapped_read_separator</tt><big>(</big><em>samfiles=None</em>, <em>paired_end=False</em>, <em>mismatch_prob_dict=None</em>, <em>transition_prob_dict=None</em>, <em>genome_priors=None</em>, <em>posterior_cutoff=0.99</em>, <em>unmapped_read_prob=0.0001</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_separator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="sparta.multimapped_read_separator.aligned_read_prob">
+<tt class="descclassname">multimapped_read_separator.</tt><tt class="descname">aligned_read_prob</tt><big>(</big><em>aligned</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_separator.aligned_read_prob" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="sparta.merge_separators">
+<tt class="descclassname">sparta.</tt><tt class="descname">merge_separators</tt><big>(</big><em>separator_list</em><big>)</big><a class="headerlink" href="#sparta.merge_separators" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -73,8 +88,8 @@
   <p class="topless"><a href="index.html"
                         title="previous chapter">This is SPARTA&#8217;s documentation!</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="estimate_error_freq.html"
-                        title="next chapter">estimate_error_freq.py</a></p>
+  <p class="topless"><a href="calculate_mismatch_probs.html"
+                        title="next chapter">calculate_mismatch_probs.py</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/sparta.txt"
@@ -107,7 +122,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="estimate_error_freq.html" title="estimate_error_freq.py"
+          <a href="calculate_mismatch_probs.html" title="calculate_mismatch_probs.py"
              >next</a> |</li>
         <li class="right" >
           <a href="index.html" title="This is SPARTA’s documentation!"

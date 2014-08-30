@@ -6,7 +6,7 @@
 
 This is SPARTA's documentation!
 ==================================
-
+test
 Overview:
 **********************************
 
@@ -42,28 +42,28 @@ For best performance, use python 2.7. Datatype conversions and other modificatio
 
 Contents:
 **********************************
-
+==================================
 
 .. toctree::
    :maxdepth: 3
 
    sparta
-   estimate_error_freq
-   compatibility
+   calculate_mismatch_probs
+   util
 
 .. automodule:: sparta
 
-.. automodule:: estimate_error_freq
+.. automodule:: calculate_mismatch_probs
 
-.. automodule:: compatibility
+.. automodule:: util
 
 Indices and tables
-==================
+==================================
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
 
 Github Page with source code:
-==================
+==================================
 https://github.com/StoreyLab/sparta
