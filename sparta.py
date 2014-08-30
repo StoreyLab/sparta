@@ -43,9 +43,10 @@ import re
 import sys
 import time
 
+from copy import copy
+
 from util import compatibility_dict
 from util import izip
-from copy import copy
 from util import dup_cycle
 from util import fix_read_mate_order
 

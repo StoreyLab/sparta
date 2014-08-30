@@ -6,22 +6,20 @@
 
 This is SPARTA's documentation!
 ==================================
-test
-Overview:
-**********************************
 
-SPARTA (**S**\ eparate **P**\ arental **A**\ lleles for **R**\ eads in **T**\ angled **A**\ lignments) is a bioinformatics tool for python 2.7 and 3.4. It is designed for RNA-seq experiments involving pooled ("tangled") reads sampled from a population containing two ancestral allele types (e.g. from the cross of two haploid yeast strains). Following alignment of the reads to the ancestral genomes with Bowtie2, SPARTA serves to separate alignments based on the most likely parental allele type.
+SPARTA (**S**\ eparate **P**\ arental **A**\ lleles for **R**\ eads in **T**\ angled **A**\ lignments) is a bioinformatics tool for python 2.7 and 3.4. It is designed for RNA-seq experiments involving pooled ("tangled") reads sampled from a population of known ancestral allele types (e.g. from the cross of two haploid yeast strains). Following alignment of the reads to the ancestral genomes with Bowtie2, SPARTA serves to separate alignments based on the most likely parental allele type.
 
 Features
 **********************************
 
 SPARTA includes the following features:
 
+- Support for an arbitrary number of parental genomes
 - Support for the widely accepted SAM format for NGS alignments
 - Support for both single read and paired end sequencing experiments
 - Fast performance on multicore systems by harnessing all available cores with python multiprocessing
-- Optional estimation of mismatch probabilities per quality score from read-pileup to allow more accurate read classification
-- Produce separate SAM output files for aligned reads that are uniquely classifiable to each genome
+- Optional estimation of mismatch probabilities per quality score from read-pileup to allow more accurate read classification (this is very computationally and memory intensive)
+- Produce separate SAM output files for aligned reads that are uniquely classifiable to each parental genome
 - Bicompatibile with Python 2.7 and 3.4
 
 Dependencies
@@ -35,14 +33,18 @@ SPARTA requires the following to be installed:
 Earlier versions of python or libraries may work, but are not guaranteed.
 For instance, pysam 0.5 is NOT compatible.
 
-It is recommended to use GNU/Linux or a Unix-like OS. Sparta was tested on Arch Linux and CentOS. Windows compatibility for SPARTA is **untested** and not guaranteed.
-The sample analysis scripts run_bowtie_sparta.py and run_sparta_pipeline.py will NOT to work on Windows.
+Also included is a shell script (sample_analysis_skelly_data.sh) that serves as a sample analysis workflow of real publicly available RNA-seq data (Skelly et al 2011). It downloads the skelly RNA-seq data and runIt depends on the following:
 
-For best performance, use python 2.7. Datatype conversions and other modifications that allow python 3.4 to work may result in slightly slower performance.
+1. a unix-based system
+2. bowtie2 2.2.3
+3. SRA toolkit (fastq-dump tool version 2.3.5)
+
+Older versions of SRA toolkit and bowtie2 MAY work. If you are working on a high-memory system (> ~20 GB) you can add the -c option to the line that runs SPARTA in order to empirically calculate mismatch probabilities.
+
+It is recommended to use GNU/Linux or a Unix-like OS. Sparta was tested on Arch Linux and CentOS. Windows compatibility for SPARTA is **untested** and not guaranteed. For best performance, use python 2.7. Datatype conversions and other modifications that allow python 3.4 to work may result in slightly slower performance.
 
 Contents:
 **********************************
-==================================
 
 .. toctree::
    :maxdepth: 3

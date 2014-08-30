@@ -33,4 +33,4 @@ bowtie2-align-s -x skelly/RM_index/index -1 skelly/SRR309119_1.fastq -2 skelly/S
 
 # use SPARTA to separate the reads that map to both genomes
 echo 'Running SPARTA'
-python sparta.py skelly/by.sam skelly/rm.sam -pe -c -n BY RM -o skelly/output
+python sparta.py skelly/by.sam skelly/rm.sam -pe -n BY RM -o skelly/output
