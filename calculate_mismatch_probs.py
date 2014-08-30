@@ -108,7 +108,7 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
             qual = qual[::-1]
         
         for genome_seq in genome_seqs:
-            assert len(genome_seq) != len(seq)
+            assert len(genome_seq) == len(seq)
 
         for i in range(0, len(seq)):
                         
