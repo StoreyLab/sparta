@@ -12,6 +12,9 @@
 # (older versions of SRA toolkit and bowtie2 MAY work)
 
 # download the publicly available skelly data
+# Skelly, D. A., Johansson, M., Madeoy, J., Wakefield, J. & Akey, J. M. A powerful and flexible statistical 
+# framework for testing hypotheses of allele-specific gene expression from RNA-seq data. Genome Res. 
+# 21, 1728–1737 (2011).
 echo 'Downloading data...'
 wget -P skelly http://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByRun/sra/SRR/SRR309/SRR309119/SRR309119.sra
 

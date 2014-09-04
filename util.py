@@ -2,11 +2,10 @@
 """
 Created on Sat Jul 26 17:46:09 2014
 
-@author: peter
+@author: Peter Edge
 """
 
 from __future__ import print_function
-from Bio.Seq import Seq
 import collections
 
 # this clever function via Adam Rosenfield: http://stackoverflow.com/questions/383565/how-to-iterate-over-a-list-repeating-each-element-in-python

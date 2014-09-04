@@ -2,7 +2,7 @@
 """
 Created on Tue Jul  8 20:43:15 2014
 
-@author: peter
+@author: Peter Edge
 """
 
 import argparse

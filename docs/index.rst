@@ -36,7 +36,7 @@ For instance, pysam 0.5 is NOT compatible.
 Also included is a shell script (sample_analysis_skelly_data.sh) that serves as a sample analysis workflow of real publicly available RNA-seq data (Skelly et al 2011). It downloads the skelly RNA-seq data and runIt depends on the following:
 
 1. a unix-based system
-2. bowtie2 2.2.3
+2. `Bowtie2 <https://github.com/BenLangmead/bowtie2>`_ 2.2.3
 3. SRA toolkit (fastq-dump tool version 2.3.5)
 
 Older versions of SRA toolkit and bowtie2 MAY work. If you are working on a high-memory system (> ~20 GB) you can add the -c option to the line that runs SPARTA in order to empirically calculate mismatch probabilities.
@@ -69,3 +69,10 @@ Indices and tables
 Github Page with source code:
 ==================================
 https://github.com/StoreyLab/sparta
+
+References:
+==================================
+
+Skelly, D. A., Johansson, M., Madeoy, J., Wakefield, J. & Akey, J. M. A powerful and flexible statistical 
+framework for testing hypotheses of allele-specific gene expression from RNA-seq data. Genome Res. 
+21, 1728–1737 (2011).

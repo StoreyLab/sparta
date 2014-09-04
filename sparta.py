@@ -29,6 +29,10 @@ default_pileup_height = 20
 default_sample_every = 10
 default_posterior_cutoff = 0.99
 default_unmapped_probability = 0.0001
+default_insertion_prob = 0.0001
+default_deletion_prob = 0.0001
+default_softclipped_prob = 0.0001
+default_hardclipped_prob = 0.0001
 default_output_dir = 'output'
 
 #imports
@@ -64,13 +68,17 @@ def parseargs():
     parser.add_argument('-ss', '--separated_samfiles', nargs='+', type = str, help='list of filenames to write separated (classified) sam outputs. default: outputdir/genome1_separated.sam...', default=[])
     parser.add_argument('-pr', '--processes', nargs='?', type = int, help='number of processes to use for separation step, default = number of CPU cores available', default=mp.cpu_count())
     parser.add_argument('-c', '--calculate_mismatches', nargs='?', type = int, help='set this flag to calculate actual mismatch probabilities for more accurate mapping. WARNING: very slow', const=1)
-    parser.add_argument('-m', '--mismatch_prob_inputfile', nargs='?', type = int, help='specify an existing file with mismatch probabilities per quality score for more accurate mapping.', default = None)
-    parser.add_argument('-t', '--transition_matrix_inputfile', nargs='?', type = int, help='specify file with transition matrix, either melted (rows like "A T 0.3") or unlabeled tab-delimited matrix with rows and columns ordered "A T G C N".', default = None)
+    parser.add_argument('-m', '--mismatch_prob_inputfile', nargs='?', type = str, help='specify an existing sparta mismatch file (e.g. output/mismatch_prob_info.txt) with mismatch probabilities per quality score for more accurate mapping.', default = None)
+    parser.add_argument('-t', '--transition_matrix_inputfile', nargs='?', type = str, help='specify file with transition matrix in tab-delimited melted format ("A T 0.3" means A to T transition has probability 0.3)', default = None)
     parser.add_argument('-ph', '--pileup_height', nargs='?', type = int, help='if calculate_mismatches is True, specify minimum height of read pileup to consider, default = {}'.format(default_pileup_height), default=default_pileup_height)
     parser.add_argument('-se', '--sample_every', nargs='?', type = int, help='if calculate_mismatches is True, specify N such that calculate_mismatch_probs only samples every N reads, default = {}'.format(default_sample_every), default=default_sample_every)
     parser.add_argument('-g', '--genome_priors', nargs='+', type = float, help='list of prior probabilities that a read belongs to each genome', default=[])
     parser.add_argument('-pc', '--posterior_cutoff', nargs='?', type = float, help='lower-bound cutoff for probability that a read belongs to a genome for it to be classified as that genome. default: {}'.format(default_posterior_cutoff), default=default_posterior_cutoff)
     parser.add_argument('-u', '--unmapped_read_prob', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read being unmapped (in the SAM) to its genome of origin. default = {}'.format(default_unmapped_probability), default=default_unmapped_probability)
+    parser.add_argument('-i', '--insertion_prob', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read having an inserted base relative to its genome of origin. default = {}'.format(default_insertion_prob), default=default_insertion_prob)
+    parser.add_argument('-d', '--deletion_prob', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read having a deleted base relative to its genome of origin. default = {}'.format(default_deletion_prob), default=default_deletion_prob)
+    parser.add_argument('-s', '--softclipped_prob', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read having a softclipped base relative to its genome of origin. default = {}'.format(default_softclipped_prob), default=default_softclipped_prob)
+    parser.add_argument('-hp', '--hardclipped_prob', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read having a hardclipped base relative to its genome of origin. default = {}'.format(default_hardclipped_prob), default=default_hardclipped_prob)
     parser.add_argument('-q', '--quiet', nargs='?', type = int, help='set this flag to supress writing final counts to stdout (default: False)', const=1)
     
     # default to help option. credit to unutbu: http://stackoverflow.com/questions/4042452/display-help-message-with-python-argparse-when-script-is-called-without-any-argu
@@ -110,7 +118,11 @@ class multimapped_read_separator():
     # The init method fills the log10 match/mismatch probability lists
     def __init__(self, samfiles=None, paired_end=False, mismatch_prob_dict=None,
                  transition_prob_dict=None, genome_priors=None, posterior_cutoff=0.99,
-                 unmapped_read_prob = 0.0001):
+                 unmapped_read_prob = default_unmapped_probability,
+                 insertion_prob = default_insertion_prob,
+                 deletion_prob = default_deletion_prob,
+                 softclipped_prob = default_softclipped_prob,
+                 hardclipped_prob = default_hardclipped_prob):
         
         # initialize variables        
         self.samfiles = samfiles
@@ -134,11 +146,11 @@ class multimapped_read_separator():
         # regex for the trailing matched bases in the MD string
         self.TRAIL_REGEX = re.compile('\d+$')
 
-        # (currently hardcoded) values for various CIGAR-related events
-        self.log10_insertion_prob = math.log10(0.0001)
-        self.log10_deletion_prob = math.log10(0.0001)
-        self.log10_softclipped_prob = math.log10(0.0001)
-        self.log10_hardclipped_prob = math.log10(0.0001)
+        # values for various CIGAR-related events
+        self.log10_insertion_prob = math.log10(insertion_prob)
+        self.log10_deletion_prob = math.log10(deletion_prob)
+        self.log10_softclipped_prob = math.log10(softclipped_prob)
+        self.log10_hardclipped_prob = math.log10(hardclipped_prob)
 
         # hardcode values for 33 since log10(0) gives an error
         self.log10_matched_base_prob[33] = - float('Inf')
@@ -410,9 +422,13 @@ class multimapped_read_separator():
 # The procedure called by different processes using apply_async.
 # Processes aligned reads, moving in skips of size interleave_ix. It is recommended
 # that you do not call this from an external module
-def _worker_procedure(samfiles, paired_end, interleave_ix, num_processes, mismatch_prob_dict, transition_prob_dict, genome_priors, posterior_cutoff, unmapped_read_prob):
+def _worker_procedure(samfiles, paired_end, interleave_ix, num_processes, mismatch_prob_dict,
+                      transition_prob_dict, genome_priors, posterior_cutoff, unmapped_read_prob,
+                      insertion_prob, deletion_prob, softclipped_prob, hardclipped_prob):
 
-    separator = multimapped_read_separator(samfiles, paired_end, mismatch_prob_dict, transition_prob_dict, genome_priors, posterior_cutoff, unmapped_read_prob)
+    separator = multimapped_read_separator(samfiles, paired_end, mismatch_prob_dict, transition_prob_dict,
+                                           genome_priors, posterior_cutoff, unmapped_read_prob,
+                                           insertion_prob, deletion_prob, softclipped_prob, hardclipped_prob)
     separator.untangle_samfiles(interleave_ix, num_processes)
     
     return separator
@@ -454,10 +470,12 @@ def merge_separators(separator_list):
 # Creates a pool of worker processes and has them process aligned_reads from samfile1
 # and samfile2 in an interleaved fashion
 def sparta(samfiles, paired_end=False, genome_names=[],
-                  num_processes=mp.cpu_count(), calculate_mismatches=False,
-                  pileup_height=default_pileup_height, sample_every=default_sample_every, genome_priors=[], posterior_cutoff=default_posterior_cutoff,
-                  unmapped_read_prob=default_unmapped_probability, output_dir=default_output_dir, separated_samfiles=[], quiet=False,
-                  mismatch_prob_inputfile=None, transition_matrix_inputfile=None):
+          num_processes=mp.cpu_count(), calculate_mismatches=False,
+          pileup_height=default_pileup_height, sample_every=default_sample_every, genome_priors=[], posterior_cutoff=default_posterior_cutoff,
+          unmapped_read_prob=default_unmapped_probability, insertion_prob=default_insertion_prob,
+          deletion_prob = default_deletion_prob, softclipped_prob = default_softclipped_prob,
+          hardclipped_prob = default_hardclipped_prob, output_dir=default_output_dir, separated_samfiles=[], quiet=False,
+          mismatch_prob_inputfile=None, transition_matrix_inputfile=None):
             
     # IT IS RECOMMENDED NOT TO MOVE THIS DEFAULT ARGUMENT HANDLING CODE
     # default argument handling has to go here for genome_names, genome_priors, and separated_samfiles
@@ -514,42 +532,27 @@ def sparta(samfiles, paired_end=False, genome_names=[],
         mismatch_prob_total_values = {}
         with open(mismatch_prob_inputfile, 'r') as inf:
             for line in inf:
-                qual, prob, total = line.rstrip.split('\t')
-                mismatch_prob_dict[qual] = prob
-                mismatch_prob_total_values[qual] = total
+                qual, prob, total = line.rstrip().split('\t')
+                mismatch_prob_dict[int(qual)] = float(prob)
+                mismatch_prob_total_values[int(qual)] = int(total)
 
     # Read in RNA-seq base transition probabilies from a file if specified
-    # accepts either melted (A T 0.3) or unlabeled matrix format with
-    # row/col ordered (A T G C N) with diagonal ignored
+    # tab-delimited melted format required (A T 0.3)
 
     if transition_matrix_inputfile:
         
         transition_prob_dict = compatibility_dict(int)        
         with open(transition_matrix_inputfile, 'r') as inf:
             
-            first_line = inf.readline()
-            first_line_elements = first_line.rstrip().split('\t')
-            if len(first_line_elements) == 3:
-                
-                inf.seek(0)
-                for line in inf:
-                    e = line.rstrip().split()
-                    transition_prob_dict[(e[0], e[1])] = float(e[2])                   
-                    
-            elif len(first_line_elements) == 5:
+            for line in inf:
+                e = line.rstrip().split()
 
-                inf.seek(0)
-                for base1 in ['A', 'T', 'G', 'C', 'N']:
+                if len(e) != 3:
+                    print('\nERROR: Incorrectly formatted transition_matrix_inputfile\n', file=sys.stderr)
+                    sys.exit(-1)
                     
-                    elements = inf.readline().rstrip().split()
-                    for e, base2 in zip(elements, ['A', 'T', 'G', 'C', 'N']):
-                        
-                        if base1 != base2:
-                            transition_prob_dict[(base1, base2)] = float(e)
+                transition_prob_dict[(e[0], e[1])] = float(e[2])
                 
-            else:
-                print('\nERROR: Incorrectly formatted transition_matrix_inputfile\n', file=sys.stderr)
-                sys.exit(-1)
                 
     if paired_end == False:
         # If in single read mode, perform rudimentary test for paired end reads.
@@ -586,7 +589,8 @@ def sparta(samfiles, paired_end=False, genome_names=[],
         for interleave_ix in range(0, num_processes):
             args = (samfiles, paired_end, interleave_ix, num_processes,
                     mismatch_prob_dict, transition_prob_dict, genome_priors,
-                    posterior_cutoff, unmapped_read_prob)
+                    posterior_cutoff, unmapped_read_prob, insertion_prob,
+                    deletion_prob, softclipped_prob, hardclipped_prob)
             async_results.append(worker_pool.apply_async(_worker_procedure, args))
         
         # Join the processes back to the main thread   
@@ -607,7 +611,9 @@ def sparta(samfiles, paired_end=False, genome_names=[],
         # call the worker procedure within main process, without interleaving
         combined_separator = _worker_procedure(samfiles, paired_end, 0, 1, mismatch_prob_dict,
                                                transition_prob_dict, genome_priors,
-                                               posterior_cutoff, unmapped_read_prob)
+                                               posterior_cutoff, unmapped_read_prob,
+                                               insertion_prob, deletion_prob, softclipped_prob,
+                                               hardclipped_prob)
 
     ############################################################################
     # PRINT OUTPUT : All printing occurs here
@@ -658,14 +664,18 @@ if __name__ == '__main__':
     genome_priors = args.genome_priors
     posterior_cutoff = args.posterior_cutoff
     unmapped_read_prob = args.unmapped_read_prob
+    insertion_prob = args.insertion_prob
+    deletion_prob = args.deletion_prob
+    hardclipped_prob = args.hardclipped_prob
+    softclipped_prob = args.softclipped_prob
     output_dir = args.output_dir
     separated_samfiles = args.separated_samfiles
     quiet = True if args.quiet else False
 
-
     sparta(samfiles, paired_end, genome_names, num_processes, calculate_mismatches,
            pileup_height, sample_every, genome_priors, posterior_cutoff, unmapped_read_prob,
-           output_dir, separated_samfiles, quiet, mismatch_prob_inputfile, transition_matrix_inputfile)
+           insertion_prob, deletion_prob, softclipped_prob, hardclipped_prob, output_dir,
+           separated_samfiles, quiet, mismatch_prob_inputfile, transition_matrix_inputfile)
     
     # Print the total time
     t2 = time.time()
