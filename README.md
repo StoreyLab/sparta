@@ -93,9 +93,6 @@ optional arguments:
                         set the (SMALL but NON-ZERO) probability of a read
                         having a hardclipped base relative to its genome of
                         origin. default = 0.0001
-  -q [QUIET], --quiet [QUIET]
-                        set this flag to supress writing final counts to
-                        stdout (default: False)
 ```
 See the documentation here:
 http://storeylab.github.io/sparta
