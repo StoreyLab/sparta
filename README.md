@@ -7,7 +7,7 @@ Divide RNA-Seq reads from pooled runs based on their ancestral genotype. Designe
 
 To run unit tests, simply run test_sparta.py
 
-To run SPARTA on data, run sparta.py from the command line (running without arguments will display the --help option)
+Run sparta.py from the command line without arguments or with the -h option to see description of command line options.
 
 See the documentation here:
 http://storeylab.github.io/sparta
