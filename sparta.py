@@ -101,8 +101,8 @@ class multimapped_read_separator():
     #    NOTE: the ascii phred char is offset by 33 for sanger format reads
     # A matched base contributes (1 - M): the probability that the base call was correct
     # and the genome in question generated the observed base.
-    # A mismatched base contributes M / 3: the probability that the base call was wrong
-    # and the called base was the observed 1 of 3 possible other bases.
+    # A mismatched base contributes M * T where T is the probabiliy of the transition given that a mismatch
+    # T defaults to 1/3 if these values are not computed or provided.
   
     # lists that hold precomputed matched and missed base probabilities
     # index into the list using the dec value of the ascii char, which is simply
