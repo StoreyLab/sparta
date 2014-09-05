@@ -71,8 +71,8 @@
 <p>add_to_pileup_dict logs information about alignments of reads to each genome in a nested dictionary structure. The goal is to record, for a set of positions (one single-base genomic position from each genome), how many times each base (A, C, G, T) is observed aligning to ALL of those positions in an alignment for a given base quality. Saving this information will allow determination of where likely consensuses are (where do all genomes agree, and bases from aligned reads agree?)</p>
 <p>If the read did not align to each genome, or if any of the alignments include sequence deviations from the reference other than single-base mismatches, the read is passed over. Disallowing insertions/deletions/etc allows for the code to be much simpler, and is allowable because only a sufficiently large subset of reads needs to be sampled anyway. Then, the original genomic sequence is re-created for each alignment (for ease of recording genomic base identities). The length of the read is iterated, and for each position, the coordinates in each genome and the genomic base identity are recorded in the dictionary, as well as the base quality and base identity of read. The dictionary stores data in the following manner:</p>
 <p>level 1 of dictionary: tuple of tuples of genomic coordinates and genomic base identities for each genome
-level 2 of dictionary: identity of base on the read
-level 3 of dictionary: quality score of read base</p>
+<p>level 2 of dictionary: identity of base on the read
+<p>level 3 of dictionary: quality score of read base</p>
 <p>the value stored in the dictionary of counts for number of times a given combination of the above values is observed.</p>
 <dl class="function">
 <dt id="calculate_mismatch_probs.create_mismatch_prob_dict">
