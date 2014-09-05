@@ -1,0 +1,145 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>calculate_mismatch_probs.py &mdash; sparta 1.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="sparta 1.0.1 documentation" href="index.html" />
+    <link rel="next" title="util.py" href="util.html" />
+    <link rel="prev" title="sparta.py" href="sparta.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="util.html" title="util.py"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="sparta.html" title="sparta.py"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">sparta 1.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="calculate-mismatch-probs-py">
+<h1>calculate_mismatch_probs.py<a class="headerlink" href="#calculate-mismatch-probs-py" title="Permalink to this headline">¶</a></h1>
+<p>The functionality of calculate_mismatch_probs is to take a set of samfiles that align the same next-gen sequencing reads to different genomes (preferably aligned with Bowtie2) and calculate the probability that bases of a given quality score will mismatch against the consensus. calculate_mismatch_probs inspects reads that map to all provided genomes. It finds base positions where the read agrees with every genome. Assuming that a likely consensus is observed (greater than 75% of &#8220;piled up&#8221; reads agree), any aberrant bases in the pileup are labeled as mismatches. Then, the proportion of matches vs. mismatches is tallied for each possible base pair quality score, and from this, the probability of random mismatch at each quality score is obtained.</p>
+<dl class="function">
+<dt id="calculate_mismatch_probs.create_genome_seq">
+<tt class="descclassname">calculate_mismatch_probs.</tt><tt class="descname">create_genome_seq</tt><big>(</big><em>aligned</em><big>)</big><a class="headerlink" href="#calculate_mismatch_probs.create_genome_seq" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>The purpose of create_genome_seq is to take in an alignedread object (<em>aligned</em>) and return a representation of the genomic sequence that it aligns to. It is assumed that the alignedread object does not have insertions/deletions/clippings/etc.</p>
+<p>If the sequence is reversed, the reverse complement of the genomic sequence will be returned.</p>
+<p>In summary, this function simply edits the original read sequence with the mismatches specified by the sam alignment&#8217;s MD field.</p>
+<dl class="function">
+<dt id="calculate_mismatch_probs.add_to_pileup_dict">
+<tt class="descclassname">calculate_mismatch_probs.</tt><tt class="descname">add_to_pileup_dict</tt><big>(</big><em>sams</em>, <em>aligned_read_set</em>, <em>pileup_dict</em><big>)</big><a class="headerlink" href="#calculate_mismatch_probs.add_to_pileup_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>add_to_pileup_dict logs information about alignments of reads to each genome in a nested dictionary structure. The goal is to record, for a set of positions (one single-base genomic position from each genome), how many times each base (A, C, G, T) is observed aligning to ALL of those positions in an alignment for a given base quality. Saving this information will allow determination of where likely consensuses are (where do all genomes agree, and bases from aligned reads agree?)</p>
+<p>If the read did not align to each genome, or if any of the alignments include sequence deviations from the reference other than single-base mismatches, the read is passed over. Disallowing insertions/deletions/etc allows for the code to be much simpler, and is allowable because only a sufficiently large subset of reads needs to be sampled anyway. Then, the original genomic sequence is re-created for each alignment (for ease of recording genomic base identities). The length of the read is iterated, and for each position, the coordinates in each genome and the genomic base identity are recorded in the dictionary, as well as the base quality and base identity of read. The dictionary stores data in the following manner:</p>
+<p>level 1 of dictionary: tuple of tuples of genomic coordinates and genomic base identities for each genome
+level 2 of dictionary: identity of base on the read
+level 3 of dictionary: quality score of read base</p>
+<p>the value stored in the dictionary of counts for number of times a given combination of the above values is observed.</p>
+<dl class="function">
+<dt id="calculate_mismatch_probs.create_mismatch_prob_dict">
+<tt class="descclassname">calculate_mismatch_probs.</tt><tt class="descname">create_mismatch_prob_dict</tt><big>(</big><em>samfiles</em>, <em>output_dir='output'</em>, <em>paired_end=False</em>, <em>pileup_height=20</em>, <em>sample_every=10</em><big>)</big><a class="headerlink" href="#calculate_mismatch_probs.create_mismatch_prob_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>This function takes a set of samfiles that align the same reads to different genomes, and returns a dictionary mapping base quality to likelihood of mismatch (as well as other supplementary information).</p>
+<p>It first accumulates counts of bases seen in &#8220;pileups&#8221; (in quotes to distinquish from pysam&#8217;s pileup feature) using add_to_pileup_dicts. Then, for each &#8220;pileup&#8221; (referring to any given set of genomic coordinates with counts of aligned bases to that set of coordinates), it requires that the number of total observations reaches a cutoff (default=20).</p>
+<p>It determines if, for a given &#8220;pileup&#8221;, a consensus is observed (defined by default as having greater than 75% of bases in the pileup agree on the same base as each genome), in which case, the number of matches and mismatches to that consensus is tallied for each quality score. The transitions between different bases are also tallied to form a separate transition probability table.</p>
+<p>Finally, these tallied values are turned into probabilities and returned. Files titled &#8220;mismatch_prob_info.txt&#8221; and &#8220;transition_prob_info.txt&#8221; are also written to the output directory with the relevant information.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="sparta.html"
+                        title="previous chapter">sparta.py</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="util.html"
+                        title="next chapter">util.py</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/calculate_mismatch_probs.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="util.html" title="util.py"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="sparta.html" title="sparta.py"
+             >previous</a> |</li>
+        <li><a href="index.html">sparta 1.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Peter Edge.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
