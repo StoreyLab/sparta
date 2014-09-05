@@ -5,6 +5,9 @@ Separate Parental Alleles for Reads from Tangled Alignments (SPARTA)
 
 Divide RNA-Seq reads from pooled runs based on their ancestral genotype. Designed to be used as a post-processing step for Bowtie2, after aligning the pooled reads to both ancestral genomes.
 
+See the documentation here:
+http://storeylab.github.io/sparta
+
 To run unit tests, simply run test_sparta.py
 
 To use sparta.py from the command line:
@@ -93,9 +96,4 @@ optional arguments:
                         set the (SMALL but NON-ZERO) probability of a read
                         having a hardclipped base relative to its genome of
                         origin. default = 0.0001
-  -q [QUIET], --quiet [QUIET]
-                        set this flag to supress writing final counts to
-                        stdout (default: False)
 ```
-See the documentation here:
-http://storeylab.github.io/sparta
