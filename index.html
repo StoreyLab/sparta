@@ -78,7 +78,7 @@ For instance, pysam 0.5 is NOT compatible.</p>
 <ol class="arabic simple">
 <li>a unix-based system</li>
 <li><a class="reference external" href="https://github.com/BenLangmead/bowtie2">Bowtie2</a> 2.2.3</li>
-<li><a class="reference external" href="https://github.com/ncbi/sratoolkit">SRA toolkit</a>(fastq-dump tool version 2.3.5)</li>
+<li><a class="reference external" href="https://github.com/ncbi/sratoolkit">SRA toolkit</a>(fastq-dump tool version 2.3.5) (Klymenko, 2014)</li>
 </ol>
 <p>Older versions of SRA toolkit and bowtie2 MAY work. If you are working on a high-memory system (&gt; ~20 GB) you can add the -c option to the line that runs SPARTA in order to empirically calculate mismatch probabilities.</p>
 <p>It is recommended to use GNU/Linux or a Unix-like OS. Sparta was tested on Arch Linux and CentOS. Windows compatibility for SPARTA is <strong>untested</strong> and not guaranteed. For best performance, use python 2.7. Datatype conversions and other modifications that allow python 3.4 to work may result in slightly slower performance.</p>
@@ -110,10 +110,13 @@ For instance, pysam 0.5 is NOT compatible.</p>
 </div>
 <div class="section" id="references">
 <h1>References:<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h1>
+<p>Andrew Klymenko https://github.com/ncbi/sratoolkit</p>
 <p>Langmead, B. & Salzberg, S. L. Fast gapped-read alignment with Bowtie 2. Nat Meth 9, 357–359 (2012).</p>
 <p>Skelly, D. A., Johansson, M., Madeoy, J., Wakefield, J. &amp; Akey, J. M. A powerful and flexible statistical
 framework for testing hypotheses of allele-specific gene expression from RNA-seq data. Genome Res.
 21, 1728–1737 (2011).</p>
+<p>Skelly data accessed with SRA accession number SRP007477</p>
+
 
 
 </div>
