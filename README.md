@@ -8,7 +8,7 @@ Divide RNA-Seq reads from pooled runs based on their ancestral genotype. Designe
 To run unit tests, simply run test_sparta.py
 
 To use sparta.py from the command line:
-
+```
 usage: sparta.py [-h] [-pe [PAIRED_END]] [-n NAMES [NAMES ...]]
                  [-o [OUTPUT_DIR]]
                  [-ss SEPARATED_SAMFILES [SEPARATED_SAMFILES ...]]
@@ -96,6 +96,6 @@ optional arguments:
   -q [QUIET], --quiet [QUIET]
                         set this flag to supress writing final counts to
                         stdout (default: False)
-
+```
 See the documentation here:
 http://storeylab.github.io/sparta
