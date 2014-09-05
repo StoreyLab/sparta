@@ -202,14 +202,14 @@ class multimapped_read_separator():
             curr_ix = 0 # curr_ix tracks the position in the alignedread seq
 
             for op, op_length in aligned.cigar:
-                '''            
-                Methodology for handling CIGAR string operations:
-                M, P, N, =, X    no penalty
-                I (1)            insertion penalty per base
-                D (2)            deletion penalty per base
-                S (4)            treat soft-clipped bases as mismatches
-                H (5)            hard-clipped base penalty per base
-                '''
+                     
+                # Methodology for handling CIGAR string operations:
+                # M, P, N, =, X    no penalty
+                # I (1)            insertion penalty per base
+                # D (2)            deletion penalty per base
+                # S (4)            soft-clipped penalty per base
+                # H (5)            hard-clipped base penalty per base
+                
                 
                 if op == 1 or op == 4:
                     # for insertions and soft clips, remove the inserted bases from the seq                    
