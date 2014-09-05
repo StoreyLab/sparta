@@ -79,7 +79,6 @@ def parseargs():
     parser.add_argument('-d', '--deletion_prob', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read having a deleted base relative to its genome of origin. default = {}'.format(default_deletion_prob), default=default_deletion_prob)
     parser.add_argument('-s', '--softclipped_prob', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read having a softclipped base relative to its genome of origin. default = {}'.format(default_softclipped_prob), default=default_softclipped_prob)
     parser.add_argument('-hp', '--hardclipped_prob', nargs='?', type = float, help='set the (SMALL but NON-ZERO) probability of a read having a hardclipped base relative to its genome of origin. default = {}'.format(default_hardclipped_prob), default=default_hardclipped_prob)
-    parser.add_argument('-q', '--quiet', nargs='?', type = int, help='set this flag to supress writing final counts to stdout (default: False)', const=1)
     
     # default to help option. credit to unutbu: http://stackoverflow.com/questions/4042452/display-help-message-with-python-argparse-when-script-is-called-without-any-argu
     if len(sys.argv) < 3:
@@ -474,7 +473,7 @@ def sparta(samfiles, paired_end=False, genome_names=[],
           pileup_height=default_pileup_height, sample_every=default_sample_every, genome_priors=[], posterior_cutoff=default_posterior_cutoff,
           unmapped_read_prob=default_unmapped_probability, insertion_prob=default_insertion_prob,
           deletion_prob = default_deletion_prob, softclipped_prob = default_softclipped_prob,
-          hardclipped_prob = default_hardclipped_prob, output_dir=default_output_dir, separated_samfiles=[], quiet=False,
+          hardclipped_prob = default_hardclipped_prob, output_dir=default_output_dir, separated_samfiles=[],
           mismatch_prob_inputfile=None, transition_matrix_inputfile=None):
             
     # IT IS RECOMMENDED NOT TO MOVE THIS DEFAULT ARGUMENT HANDLING CODE
@@ -670,14 +669,12 @@ if __name__ == '__main__':
     softclipped_prob = args.softclipped_prob
     output_dir = args.output_dir
     separated_samfiles = args.separated_samfiles
-    quiet = True if args.quiet else False
 
     sparta(samfiles, paired_end, genome_names, num_processes, calculate_mismatches,
            pileup_height, sample_every, genome_priors, posterior_cutoff, unmapped_read_prob,
            insertion_prob, deletion_prob, softclipped_prob, hardclipped_prob, output_dir,
-           separated_samfiles, quiet, mismatch_prob_inputfile, transition_matrix_inputfile)
+           separated_samfiles, mismatch_prob_inputfile, transition_matrix_inputfile)
     
     # Print the total time
     t2 = time.time()
-    if not quiet:
-        print('TOTAL TIME: {}'.format(t2-t1))
+    print('TOTAL TIME: {}'.format(t2-t1))
