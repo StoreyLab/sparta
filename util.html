@@ -1,0 +1,126 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>util.py &mdash; sparta 1.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="sparta 1.0.1 documentation" href="index.html" />
+    <link rel="prev" title="calculate_mismatch_probs.py" href="calculate_mismatch_probs.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="calculate_mismatch_probs.html" title="calculate_mismatch_probs.py"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">sparta 1.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="util-py">
+<h1>util.py<a class="headerlink" href="#util-py" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="util.dup_cycle">
+<tt class="descclassname">util.</tt><tt class="descname">dup_cycle</tt><big>(</big><em>iterable</em><big>)</big><a class="headerlink" href="#util.dup_cycle" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>Credit goes to Adam Rosenfield for this function: <a class="reference external" href="http://stackoverflow.com/questions/383565/how-to-iterate-over-a-list-repeating-each-element-in-python">http://stackoverflow.com/questions/383565/how-to-iterate-over-a-list-repeating-each-element-in-python</a></p>
+<p>It serves to allow iteration over sort_fates twice per item, so that saved sort fates for paired end reads (where only one parental genome &#8216;fate&#8217; is saved for each pair) can be zipped properly to the iterable samfile objects.</p>
+<dl class="function">
+<dt id="util.fix_read_mate_order">
+<tt class="descclassname">util.</tt><tt class="descname">fix_read_mate_order</tt><big>(</big><em>aligned_reads</em>, <em>aligned_read_mates</em><big>)</big><a class="headerlink" href="#util.fix_read_mate_order" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>This function is designed to circumvent the fact that in the case of samfiles of paired end reads, there is no guarantee that reads and their mates will appear in the same order that they appeared in the fastq file. For example, imagine a set of paired-end reads is aligned to two different genomes with bowtie2, resulting in two different samfiles. Now, we examine the Nth read/mate pair in both files (reads and their mates appear as consecutive alignments in the samfile). It is entirely possible that the first alignment of the pair is that of the read, or that both are alignments of its mate, or that one is of the read and one is to its mate.</p>
+<p>Therefore, since we intend to examine equivalent alignments in multiple files, we must order read/mate pairs as we get them in (read, mate) order. This function takes a list of &#8220;first&#8221; pysam aligned_read objects (the aligned_reads parameter) in a pairing as well as the list of &#8220;second&#8221; ones (the aligned_read_mates parameter), and returns a list of correctly ordered reads, and a list of correctly ordered mates.</p>
+<dl class="function">
+<dt id="util.compatibility_dict">
+<tt class="descclassname">util.</tt><tt class="descname">compatibility_dict</tt><big>(</big><big>)</big><a class="headerlink" href="#util.compatibility_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>compatibility_dict is meant to allow collections.defaultdict to be used on both Python 2.7 and 3.4. It simply overrides the items() function of the dict so that in python 2.7 it uses collections.defaultdict.iteritems(self), and in python 3.4 (where the items() function returns an iterator-like object) it simply uses collections.defaultdict.items(self).</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="calculate_mismatch_probs.html"
+                        title="previous chapter">calculate_mismatch_probs.py</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/util.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="calculate_mismatch_probs.html" title="calculate_mismatch_probs.py"
+             >previous</a> |</li>
+        <li><a href="index.html">sparta 1.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Peter Edge.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

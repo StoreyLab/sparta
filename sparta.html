@@ -1,0 +1,218 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>sparta.py &mdash; sparta 1.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="sparta 1.0.1 documentation" href="index.html" />
+    <link rel="next" title="calculate_mismatch_probs.py" href="calculate_mismatch_probs.html" />
+    <link rel="prev" title="This is SPARTA’s documentation!" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="calculate_mismatch_probs.html" title="calculate_mismatch_probs.py"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="This is SPARTA’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">sparta 1.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="sparta-py">
+<h1>sparta.py<a class="headerlink" href="#sparta-py" title="Permalink to this headline">¶</a></h1>
+<p>sparta.py is the main source file for SPARTA. Its main functionality is to take as input a set of SAM format files that map the same set of RNA-seq or DNA-seq reads (i.e. from the same .fastq file) to different genomes via <a class="reference external" href="https://github.com/BenLangmead/bowtie2">Bowtie2</a>, and sort each read as belonging to one genome or the other. It is assumed that each read belongs to one genome or the other, for instance pooled RNA-seq data from a population of crosses of two haploid yeast strains. sparta will classify each read as belonging uniquely to one of the genomes, or deem it unclassifiable.</p>
+<dl class="function">
+<dt id="sparta.sparta">
+<tt class="descclassname">sparta.</tt><tt class="descname">sparta</tt><big>(</big><em>samfiles</em>, <em>paired_end=False</em>, <em>genome_names=</em>, <span class="optional">[</span><span class="optional">]</span><em>num_processes=4</em>, <em>calculate_mismatches=False</em>, <em>pileup_height=20</em>, <em>sample_every=10</em>, <em>genome_priors=</em>, <span class="optional">[</span><span class="optional">]</span><em>posterior_cutoff=0.99</em>, <em>unmapped_read_prob=0.0001</em>, <em>insertion_prob=0.0001</em>, <em>deletion_prob=0.0001</em>, <em>softclipped_prob=0.0001</em>, <em>hardclipped_prob=0.0001</em>, <em>output_dir='output'</em>, <em>separated_samfiles=</em>, <span class="optional">[</span><span class="optional">]</span><em>quiet=False</em>, <em>mismatch_prob_inputfile=None</em>, <em>transition_matrix_inputfile=None</em><big>)</big><a class="headerlink" href="#sparta.sparta" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>sparta.sparta is the central logic of the entire program (the main function simply parses command line args and passes them directly as the arguments to this function).</p>
+<p>sparta.sparta takes the following arguments:</p>
+<p><em>samfiles</em>: a list of paths to samfiles that map the same reads to different genomes</p>
+<p><em>paired_end</em>: True if the aligned reads are paired end, otherwise False</p>
+<p><em>genome_names</em>: A list of names where the Nth name is associated with the Nth sam alignment&#8217;s genomic reference</p>
+<p><em>num_processes</em>: how many child processes (cores) to use while classifying reads</p>
+<p><em>calculate_mismatches</em>: whether or not to calculate the probability of mismatch per quality score as well as transition probabilities empirically using <a class="reference internal" href="calculate_mismatch_probs.html#calculate_mismatch_probs.create_mismatch_prob_dict" title="calculate_mismatch_probs.create_mismatch_prob_dict"><tt class="xref py py-func docutils literal"><span class="pre">calculate_mismatch_probs.create_mismatch_prob_dict()</span></tt></a></p>
+<p><em>pileup_height</em>: The minimum number of bases in a &#8220;pileup&#8221; to calculate mismatches from (if calculate_mismatches).</p>
+<p><em>sample_every</em>: If calculate_mismatches, sample every (this many) reads</p>
+<p><em>genome_priors</em>: a list of prior probabilities for each genome that any given read belongs to that genome (default: equal probabilities)</p>
+<p><em>posterior_cutoff</em>: the minimum posterior probability that a read belongs to a genome to classify it as such</p>
+<p><em>unmapped_read_prob</em>: the probability that a read will be unmapped to the genome that it originated from</p>
+<p><em>insertion_prob</em>: the probability that a read will have an inserted base compared to the genome that it originated from</p>
+<p><em>deletion_prob</em>: the probability that a read will have a deleted base compared to the genome that it originated from</p>
+<p><em>softclipped_prob</em>: the probability that a read will have a soft clipped base compared to the genome that it originated from</p>
+<p><em>hardclipped_prob</em>: the probability that a read will have a hard clipped base compared to the genome that it originated from</p>
+<p><em>output_dir</em>: directory where output files will be written. Will be created if nonexistent.</p>
+<p><em>separated_samfiles</em>: a list of file paths to write newly separated samfiles for each genome</p>
+<p><em>quiet</em>: if True, do not print total time to stdout</p>
+<p><em>mismatch_prob_dict_inputfile</em>: a file that specifies probability of mismatch at a given quality score (e.g. output/mismatch_prob_info.txt). File should be tab-delimited format with the first column being a quality score in ord(ascii) form (integers between 33 - 127), second column should be probabilities of a base mismatch at that quality, and third column should be the number of total number of bases observed in calculating that probability.</p>
+<p><em>transition_prob_dict_inputfile</em>: a file that specifies probability of transition from each base to each other base given that a mismatch has occured (e.g. output/transition_prob_info.txt). The file should be tab-delimited and column 1 should be the reference base, column 2 should be the base being transitioned to, and column 3 should be the probability of transition from the base in column 1 to the base in column 2.</p>
+<p>A brief description of what the sparta.sparta function does:</p>
+<p>If the names of inputfiles for transition and mismatch probability information is provided, then these are parsed. Alternatively, they can be calculated new using calculate_mismatch_probs.create_mismatch_prob_dict or skipped altogether (in which case mismatch probability is calculated directly from quality score and transition probability is fixed as 1/3 for each transition)</p>
+<p>If multiple processes are specified then a pool of worker processes is created, set to process the samfiles in interleaved fashion, and then recombined. Otherwise, _worker_procedure is called directly from the parent process. Finally, all results are printed to the output directory.</p>
+<p><strong>The remaining classes and methods are designed to be relatively &#8216;private&#8217; to sparta (despite the distinction of public vs. private not existing in Python) and should be used to understand how the program works or for forking/modifying/extending the code, and are NOT recommended to be called by a user desiring intended SPARTA functionality.</strong></p>
+<dl class="class">
+<dt id="sparta.multimapped_read_separator">
+<em class="property">class </em><tt class="descclassname">sparta.</tt><tt class="descname">multimapped_read_separator</tt><big>(</big><em>samfiles=None</em>, <em>paired_end=False</em>, <em>mismatch_prob_dict=None</em>, <em>transition_prob_dict=None</em>, <em>genome_priors=None</em>, <em>posterior_cutoff=0.99</em>, <em>unmapped_read_prob=0.0001</em>, <em>insertion_prob=0.0001</em>, <em>deletion_prob=0.0001</em>, <em>softclipped_prob=0.0001</em>, <em>hardclipped_prob=0.0001</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_separator" title="Permalink to this definition">¶</a></dt>
+<dd><p>The multimapped_read_separator class encapsulates the procedure of classifying a series of reads to their respective parental genomes.</p>
+<p>It contains lists that store the results of the sort: multimapped_read_separator.sort_fates, multimapped_read_separator.mismatch_logs, and multimapped_read_separator.posterior_logs.</p>
+<blockquote>
+<div><dl class="method">
+<dt id="sparta.multimapped_read_separator.log">
+<tt class="descname">log</tt><big>(</big><em>mismatch_list</em>, <em>posterior_list</em>, <em>sort_fate</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_separator.log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>This method logs the results of one sorting decision into the log lists. mismatch_list is indexed by genome number (genome of first samfile is 0, genome of second samfile is 1, etc.), that records the number of mismatches to each genome. posterior_list is also indexed by genome number, and records the posterior probability that a read belongs to each genome (as calculated by sparta.multimapped_read_separator.untangle_samfiles). sort_fate simply contains the sorting decision of each read: 0 means unsorted whereas 1-N mean that the read was classified as that genome (same genome index scheme as earlier except 1-indexed).</p>
+<dl class="method">
+<dt id="sparta.multimapped_read_separator.aligned_read_prob">
+<tt class="descname">aligned_read_prob</tt><big>(</big><em>aligned</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_separator.aligned_read_prob" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>aligned_read_prob computes the prior probability that a read was generated given that it was produced by the genome it is aligned to. For this reason, its only argument is a pysam alignedread object.</p>
+<p>A set probability per base for differences from the reference that are not mismatches (0.0001 by default), such as insertions/deletions/etc. Then, the product of the probability of each aligned base is computed. A match has probability (1 - Pr(mismatch given quality)) while a mismatch has probability (Pr(mismatch) * Pr(specific transition given that there is a mismatch)).</p>
+<dl class="method">
+<dt id="sparta.multimapped_read_separator.count_mismatches">
+<tt class="descname">count_mismatches</tt><big>(</big><em>aligned_read_set</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_separator.count_mismatches" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>This method simply counts the total number of base mismatches present (from the alignedread&#8217;s MD string) for a list of alignedreads. This is stored and is interesting for later analyses, although it does not directly play a role in classification.</p>
+<dl class="method">
+<dt id="sparta.multimapped_read_separator.bayes_classify">
+<tt class="descname">bayes_classify</tt><big>(</big><em>read_probs</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_separator.bayes_classify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>This method applies bayes rule with the law of total probability to a set of prior probabilities (one for each aligned genome). It then determines if any of the probabilities meet the posterior probability cutoff (&#8211;posterior_cutoff argument). It returns a string describing the classification decision, the list of posterior probabilities, and the sort fate as an integer.</p>
+<dl class="method">
+<dt id="sparta.multimapped_read_separator.untangle_mappings">
+<tt class="descname">untangle_mappings</tt><big>(</big><em>aligned_reads</em>, <em>aligned_read_mates=None</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_separator.untangle_mappings" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>untangle_mappings takes a list alignedreads and an optional list of mates and returns a string describing the classification decision, the list of posterior probabilities of each possible genome, and the integer sort fate (0 means unsorted and 1-N are the 1-indexed input genomes). For unmapped reads, the method applies a very small nonzero probability that the read was generated by that genome. For paired end reads, the prior probabilities of the read and the mate are multiplied together before applying bayes rule (essentially treating them as one long read).</p>
+<dl class="method">
+<dt id="sparta.multimapped_read_separator.untangle_samfiles">
+<tt class="descname">untangle_samfiles</tt><big>(</big><em>interleave_ix=0</em>, <em>num_processes=1</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_separator.untangle_samfiles" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>untangle_samfiles is one further step up the heirarchy from untangle_mappings; it opens all of the samfiles and iterates over them in parallel and calls untangle_mappings to obtain a classification result.</p>
+<p>alignedreads are processed at an interval appropriate for the number of processes being used, so that the results (which do not depend on one another by definition) can be recombined into the results for the entire files. For example, if there are 4 processes being distributed across 4 cores, then core 1 might process lines 0,4,8... in the file while core 2 processes lines 1,5,9..., core 3 processes 2,6,10... and on. In this example, the num_processes argument would be 4 and each process would have a different interleave_ix (0-3).</p>
+<p>For paired-end reads, there is the additional task of ensuring that reads and mates are ordered properly before calling untangle_samfiles, and this is handled with the function util.fix_read_mate_order.</p>
+<dl class="method">
+<dt id="sparta.multimapped_read_separator.write_samfiles">
+<tt class="descname">write_samfiles</tt><big>(</big><em>new_sam_paths</em><big>)</big><a class="headerlink" href="#sparta.multimapped_read_separator.write_samfiles" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>This method makes a final pass through the samfiles and writes new samfiles for each genome (where each samfile contains only the reads classified to each genome).</p>
+<p>It is required that the length of sort_fates equals the number of fastq reads (in other words, that results have already been recombined if multiprocessing was used).</p>
+<p>The single argument to the method is a list of pathnames where the new samfiles will be written.</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="function">
+<dt id="sparta._worker_procedure">
+<tt class="descclassname">sparta.</tt><tt class="descname">_worker_procedure</tt><big>(</big><em>samfiles</em>, <em>paired_end</em>, <em>interleave_ix</em>, <em>num_processes</em>, <em>mismatch_prob_dict</em>, <em>transition_prob_dict</em>, <em>genome_priors</em>, <em>posterior_cutoff</em>, <em>unmapped_read_prob</em>, <em>insertion_prob</em>, <em>deletion_prob</em>, <em>softclipped_prob</em>, <em>hardclipped_prob</em><big>)</big><a class="headerlink" href="#sparta._worker_procedure" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>This function encapsulates the procedure that a worker process executes when multiprocessing is used.</p>
+<p>A new multimapped_read_separator is created and used to separate reads in a samfile according to a specific interleave_ix.</p>
+<p>The separator itself is returned.</p>
+<dl class="function">
+<dt id="sparta.merge_separators">
+<tt class="descclassname">sparta.</tt><tt class="descname">merge_separators</tt><big>(</big><em>separator_list</em><big>)</big><a class="headerlink" href="#sparta.merge_separators" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>Merge a list of multimapped_read_separators (specifically, the mismatch/posterior_prob/sort_fate logs) and return the combined separator.</p>
+<p>Items in the returned separator are exactly like they would be if the code were run linearly without multiprocessing.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">This is SPARTA&#8217;s documentation!</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="calculate_mismatch_probs.html"
+                        title="next chapter">calculate_mismatch_probs.py</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/sparta.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="calculate_mismatch_probs.html" title="calculate_mismatch_probs.py"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="This is SPARTA’s documentation!"
+             >previous</a> |</li>
+        <li><a href="index.html">sparta 1.0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Peter Edge.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
