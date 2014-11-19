@@ -21,9 +21,6 @@ Run the program without arguments to see the description of optional arguments
 
 '''
 
-# set true for debugging purposes
-cautious = True 
-
 # default arguments
 default_pileup_height = 20
 default_sample_every = 10
