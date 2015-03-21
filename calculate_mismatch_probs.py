@@ -101,7 +101,7 @@ def add_to_pileup_dict(sams, aligned_read_set, pileup_dict):
         
         pos_dicts = [dict(read.aligned_pairs) for read in aligned_read_set]
         genome_seqs = [create_genome_seq(read) for read in aligned_read_set]
-        qual = bytearray(aligned_read_set[0].qual)
+        qual = bytearray(aligned_read_set[0].qual, 'utf-8')
         seq = MutableSeq(aligned_read_set[0].seq if type(aligned_read_set[0].seq) == str else aligned_read_set[0].seq.decode('UTF-8'))  
         if aligned_read_set[0].is_reverse:
             seq.reverse_complement()

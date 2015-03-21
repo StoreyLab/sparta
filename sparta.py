@@ -187,7 +187,7 @@ class multimapped_read_separator():
         
         total = 0
         seq_ix = 0
-        qual = bytearray(aligned.qual)
+        qual = bytearray(aligned.qual, 'utf-8')
         aligned_seq = aligned.seq if type(aligned.seq) == str else aligned.seq.decode('UTF-8')
                         
         if len(aligned.cigar) > 1:
@@ -383,13 +383,18 @@ class multimapped_read_separator():
             sam.close()
                 
 
-    def write_samfiles(self, new_sam_paths):
+    def write_samfiles(self, new_sam_paths, ambig_sam_paths):
         
         # open up old, unseparated samfiles
         old_sams = [pysam.Samfile(sam) for sam in self.samfiles]
 
         # open up samfiles to print separated aligned_reads to
         new_sams = [pysam.Samfile(new_sam_path, 'wh', template=old_sam) for old_sam, new_sam_path in zip(old_sams, new_sam_paths)]
+
+        # open up samfiles to print ambiguous aligned_reads to
+        ambig_sams = [pysam.Samfile(ambig_sam_path, 'wh', template=old_sam) for old_sam, ambig_sam_path in zip(old_sams, ambig_sam_paths)]
+
+        num_genomes = len(old_sams)
 
         if not self.paired_end: # single reads
 
@@ -398,6 +403,12 @@ class multimapped_read_separator():
                 if sort_fate:
                     
                     new_sams[sort_fate-1].write(aligned_read_set[sort_fate-1])
+
+                else:
+
+                    for i in range(0, num_genomes):
+
+                        ambig_sams[i].write(aligned_read_set[i])
                     
         else: # paired end reads
             
@@ -406,11 +417,20 @@ class multimapped_read_separator():
                 if sort_fate:
                     
                     new_sams[sort_fate-1].write(aligned_read_set[sort_fate-1])
+
+                else:
+
+                    for i in range(0, num_genomes):
+
+                        ambig_sams[i].write(aligned_read_set[i])
                     
         for sam in old_sams:
             sam.close()
         
         for sam in new_sams:
+            sam.close()
+
+        for sam in ambig_sams:
             sam.close()
 
 
@@ -492,8 +512,10 @@ def sparta(samfiles, paired_end=False, genome_names=[],
         print('ERROR: length of genome prior probability list (-gp argument) should be equal to number of samfiles', file=sys.stderr)
         sys.exit(-1)
 
+    ambig_samfiles = [os.path.join(output_dir, '{}_ambiguous.sam'.format(name)) for name in genome_names]
     if separated_samfiles == []:
         separated_samfiles = [os.path.join(output_dir, '{}_separated.sam'.format(name)) for name in genome_names]
+        
     elif len(separated_samfiles) != len(samfiles):
         print('ERROR: length of separated (classified) sam output list (-ss argument) should be equal to number of samfiles', file=sys.stderr)
         sys.exit(-1)
@@ -616,8 +638,8 @@ def sparta(samfiles, paired_end=False, genome_names=[],
     ############################################################################
         
     # Write newly separated Samfiles, one for each genome
-    combined_separator.write_samfiles(separated_samfiles)
-        
+    combined_separator.write_samfiles(separated_samfiles, ambig_samfiles)
+    
     # Print a file containing a matrix where columns are genomes and rows contain mismatches per alignment
     mismatches_filepath = os.path.join(output_dir, 'mismatch_counts')
     with open(mismatches_filepath, 'w') as mismatch_file:

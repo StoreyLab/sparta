@@ -284,15 +284,15 @@ class test_multiprocessing(unittest.TestCase):
         
         # no multiprocessing
         sparta.sparta(sams, num_processes=1, output_dir=os.path.join(out_dir, 'no_mp'),
-                      separated_samfiles=[os.path.join(out_dir,'no_mp','sorted1.sam'), os.path.join(out_dir,'no_mp','sorted2.sam')], quiet=True)
+                      separated_samfiles=[os.path.join(out_dir,'no_mp','sorted1.sam'), os.path.join(out_dir,'no_mp','sorted2.sam')])
         
         # processes = cpu_count
         sparta.sparta(sams, output_dir=os.path.join(out_dir,'mp'),
-                      separated_samfiles=[os.path.join(out_dir,'mp','sorted1.sam'), os.path.join(out_dir,'mp','sorted2.sam')], quiet=True)
+                      separated_samfiles=[os.path.join(out_dir,'mp','sorted1.sam'), os.path.join(out_dir,'mp','sorted2.sam')])
 
         # processes = 10
         sparta.sparta(sams, num_processes=10, output_dir=os.path.join(out_dir,'mp10'),
-                      separated_samfiles=[os.path.join(out_dir,'mp10','sorted1.sam'), os.path.join(out_dir,'mp10','sorted2.sam')], quiet=True)
+                      separated_samfiles=[os.path.join(out_dir,'mp10','sorted1.sam'), os.path.join(out_dir,'mp10','sorted2.sam')])
                       
         match, mismatch, errors = filecmp.cmpfiles(os.path.join(out_dir,'no_mp'), os.path.join(out_dir,'mp'),
                                                    common=files_to_check)
@@ -323,15 +323,15 @@ class test_multiprocessing(unittest.TestCase):
         
         # no multiprocessing
         sparta.sparta(sams, paired_end=True, num_processes=1, output_dir=os.path.join(out_dir, 'no_mp'),
-                      separated_samfiles=[os.path.join(out_dir,'no_mp','sorted1.sam'),os.path.join(out_dir,'no_mp','sorted2.sam')], quiet=True)
+                      separated_samfiles=[os.path.join(out_dir,'no_mp','sorted1.sam'),os.path.join(out_dir,'no_mp','sorted2.sam')])
         
         # processes = cpu_count
         sparta.sparta(sams, paired_end=True, output_dir=os.path.join(out_dir,'mp'),
-                      separated_samfiles=[os.path.join(out_dir,'mp','sorted1.sam'), os.path.join(out_dir,'mp','sorted2.sam')], quiet=True)
+                      separated_samfiles=[os.path.join(out_dir,'mp','sorted1.sam'), os.path.join(out_dir,'mp','sorted2.sam')])
 
         # processes = 10
         sparta.sparta(sams, paired_end=True, num_processes=10, output_dir=os.path.join(out_dir,'mp10'),
-                      separated_samfiles=[os.path.join(out_dir,'mp10','sorted1.sam'), os.path.join(out_dir,'mp10','sorted2.sam')], quiet=True)
+                      separated_samfiles=[os.path.join(out_dir,'mp10','sorted1.sam'), os.path.join(out_dir,'mp10','sorted2.sam')])
                       
         match, mismatch, errors = filecmp.cmpfiles(os.path.join(out_dir,'no_mp'), os.path.join(out_dir,'mp'),
                                                    common=files_to_check)
